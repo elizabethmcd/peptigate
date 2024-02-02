@@ -46,8 +46,7 @@ rule filter_nt_contigs_to_short:
 
 rule filter_nt_contigs_to_long:
     input: all_contigs = all_contigs
-    # TER todo make temp()
-    output: "outputs/sORF/long_contigs/contigs300.fa"
+    output: temp("outputs/sORF/long_contigs/contigs300.fa")
     conda: "envs/seqkit.yml"
     shell:'''
     seqkit seq --min-len 301 -o {output} {input.all_contigs}
@@ -56,6 +55,7 @@ rule filter_nt_contigs_to_long:
 rule get_coding_contig_names:
     """
     Extract amino acid contig names and remove everything after the first period, which are isoform labels.
+    This file will be used to select all contigs that DO NOT encode ORFs, according to transdecoder.
     """
     input: orfs_amino_acids,
     output: "outputs/sORF/long_contigs/orfs_amino_acid_names.txt"
@@ -81,6 +81,13 @@ rule filter_long_contigs_to_noncoding:
     '''
 
 rule download_rnasamba_model:
+    """
+    The RNAsamba model was trained on human but had good predictive accuracy for distantly related model organisms.
+    Accuracy did drop for drosophila and zebrafish, however the authors suggest that this might be due to inaccuracies in annotations in these two species.
+    While they don't investigate further, I find their claim convincing.
+    This reinforced to me that the quality of the training data is more important than the species it originates from.
+    Strong performance in C. elegans and Arabadopsis also suggests that the human model is sufficient for diverse organisms.
+    """
     output: "inputs/models/rnasamba/full_length_weights.hdf"
     conda: "envs/wget.yml"
     shell:'''
@@ -101,8 +108,11 @@ rule rnasamba:
     output:
         tsv = "outputs/sORF/{length}_contigs/rnasamba/classification.tsv",
         fa  = "outputs/sORF/{length}_contigs/rnasamba/predicted_proteins.fa"
+    # TODO: update rnasamba installation according to tests
     conda: "envs/rnasamba.yml"
     shell:'''
     rnasamba classify -p {output.fa} {output.tsv} {input.all_contigs} {input.model}
     '''
+
+## TODO: predict sORFs from lncRNAs
 
