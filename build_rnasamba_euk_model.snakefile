@@ -79,6 +79,7 @@ rule reduce_sequence_homology:
     mmseqs easy-cluster {input} {params.prefix} tmp_mmseqs2 --min-seq-id 0.8 --cov-mode 1 --cluster-mode 2
     '''
 
+# TER TODO: consider changing the ncrna input path to remove some duplication in the rules
 rule grab_validation_set_names_and_lengths:
     input: "inputs/validation/rnachallenge/{validation_type}.fa.gz",
     output: 
@@ -90,7 +91,6 @@ rule grab_validation_set_names_and_lengths:
     seqkit faidx {output.validation}
     '''
 
-# TER TODO: consider changing the ncrna input path to remove some duplication in the rules
 rule grab_traintest_coding_names_and_lengths:
     input: expand("outputs/models/rnasamba/build/0_coding/{genome}.fa.gz", genome = GENOMES),
     output:
@@ -118,14 +118,7 @@ rule process_sequences_into_nonoverlapping_sets:
         traintest_fai = expand("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_{coding_type}.fa.fai", coding_type = CODING_TYPES), 
         validation_fai = expand("inputs/validation/rnachallenge/{validation_type}.fa.fai", validation_type = VALIDATION_TYPES),
         clusters = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv"
-    output:
-        # TER TODO: the set_name/set_types could be born here, but I need to check the order in which they would be built to make sure files aren't named the wrong thing. actually i could do this by number of lines in the final file. Also need to update the R script to point to the right thing
-        coding_train = "outputs/models/rnasamba/build/2_sequence_sets/coding_train.txt",
-        coding_test = "outputs/models/rnasamba/build/2_sequence_sets/coding_test.txt",
-        noncoding_train = "outputs/models/rnasamba/build/2_sequence_sets/noncoding_train.txt",
-        noncoding_test = "outputs/models/rnasamba/build/2_sequence_sets/noncoding_test.txt",
-        coding_validation = "outputs/models/rnasamba/build/2_sequence_sets/coding_validation.txt",
-        noncoding_validation = "outputs/models/rnasamba/build/2_sequence_sets/noncoding_validation.txt"
+    output: expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.txt", coding_type = CODING_TYPES, dataset_type = DATASET_TYPES)
     conda: "envs/tidyverse.yml"
     script: "scripts/process_sequences_into_nonoverlapping_sets.R"
 

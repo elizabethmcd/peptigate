@@ -77,10 +77,11 @@ coding_traintest_split <- split_train_and_test_data(coding_traintest_keep)
 noncoding_traintest_split <- split_train_and_test_data(noncoding_traintest_filtered)
 
 # write out contigs names for each set ------------------------------------
-
-write.table(coding_traintest_split$train_df$sequence, snakemake@output[['coding_train']], quote = F, col.names = F, row.names = F)
-write.table(coding_traintest_split$test_df$sequence, snakemake@output[['coding_test']], quote = F, col.names = F, row.names = F)
-write.table(noncoding_traintest_split$train_df$sequence, snakemake@output[['noncoding_train']], quote = F, col.names = F, row.names = F)
-write.table(noncoding_traintest_split$test_df$sequence, snakemake@output[['noncoding_test']], quote = F, col.names = F, row.names = F)
-write.table(coding_validation_filtered$sequence, snakemake@output[['coding_validation']], quote = F, col.names = F, row.names = F)
-write.table(noncoding_validation_filtered$sequence, snakemake@output[['noncoding_validation']], quote = F, col.names = F, row.names = F)
+snakemake_output <- unlist(snakemake@output)
+print(snakemake_output)
+write.table(coding_traintest_split$train_df$sequence, snakemake_output[1], quote = F, col.names = F, row.names = F)
+write.table(coding_traintest_split$test_df$sequence, snakemake_output[2], quote = F, col.names = F, row.names = F)
+write.table(coding_validation_filtered$sequence, snakemake_output[3], quote = F, col.names = F, row.names = F)
+write.table(noncoding_traintest_split$train_df$sequence, snakemake_output[4], quote = F, col.names = F, row.names = F)
+write.table(noncoding_traintest_split$test_df$sequence, snakemake_output[5], quote = F, col.names = F, row.names = F)
+write.table(noncoding_validation_filtered$sequence, snakemake_output[6], quote = F, col.names = F, row.names = F)
