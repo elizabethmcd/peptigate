@@ -6,13 +6,12 @@ metadata = pd.read_csv("inputs/models/rnasamba/build/train_data_links.tsv", sep 
 GENOMES = metadata['genome'].unique().tolist()
 RNA_TYPES = ['cdna', 'ncrna'] # inherits names from ensembl
 VALIDATION_TYPES = ['mRNAs', 'ncRNAs'] # inherits names from https://github.com/cbl-nabi/RNAChallenge
+SET_TYPES = ['coding', 'noncoding']
+SET_NAMES = ['train', 'test', 'validation']
 
 rule all:
     input: 
-        "outputs/models/rnasamba/build/stats.tsv",
-        "outputs/models/rnasamba/build/2_sequence_sets/protein_coding_traintest.fa",
-        "outputs/models/rnasamba/build/2_sequence_sets/non_coding_traintest.fa",
-        expand("outputs/models/rnasamba/build/2_sequence_sets/validation/{validation_type}.fa", validation_type = VALIDATION_TYPES)
+        expand("outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa", set_type = SET_TYPES, set_name = SET_NAMES)
 
 rule download_ensembl_data:
     """
@@ -43,23 +42,23 @@ rule extract_protein_coding_orfs_from_cdna:
     Transcripts in the cDNA files have headers like: >TRANSCRIPT_ID SEQTYPE LOCATION GENE_ID GENE_BIOTYPE TRANSCRIPT_BIOTYPE, where the gene_biotype and transcript_biotype both contain information about whether the gene is coding or not.
     """
     input: "inputs/ensembl/cdna/{genome}.cdna.fa.gz"
-    output: "outputs/models/rnasamba/build/0_protein_coding/{genome}.fa.gz"
+    output: "outputs/models/rnasamba/build/0_coding/{genome}.fa.gz"
     conda: "envs/seqkit.yml"
     shell:'''
     seqkit grep --use-regexp --by-name --pattern "transcript_biotype:protein_coding" -o {output} {input}
     '''
 
 rule download_validation_data:
-    output: "inputs/validation/rnachallenge/{validation_type}.fa",
+    output: "inputs/validation/rnachallenge/{validation_type}.fa.gz",
     shell:'''
-    curl -JLo {output} https://raw.githubusercontent.com/cbl-nabi/RNAChallenge/main/RNAchallenge/{wildcards.validation_type}.fa
+    curl -JL https://raw.githubusercontent.com/cbl-nabi/RNAChallenge/main/RNAchallenge/{wildcards.validation_type}.fa | gzip > {output}
     '''
 
 rule combine_sequences:
     input:
-       coding = expand("outputs/models/rnasamba/build/0_protein_coding/{genome}.fa.gz", genome = GENOMES),
+       coding = expand("outputs/models/rnasamba/build/0_coding/{genome}.fa.gz", genome = GENOMES),
        noncoding = expand("inputs/ensembl/ncrna/{genome}.ncrna.fa.gz", genome = GENOMES),
-       validation = expand("inputs/validation/rnachallenge/{validation_type}.fa", validation_type = VALIDATION_TYPES)
+       validation = expand("inputs/validation/rnachallenge/{validation_type}.fa.gz", validation_type = VALIDATION_TYPES)
     output: "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.gz"
     shell:'''
     cat {input} > {output}
@@ -79,48 +78,64 @@ rule reduce_sequence_homology:
     mmseqs easy-cluster {input} {params.prefix} tmp_mmseqs2 --min-seq-id 0.8 --cov-mode 1 --cluster-mode 2
     '''
 
-rule grab_representative_sequence_names:
-    input: "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq.fasta",
-    output: "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq_names.txt"
+rule grab_validation_set_names_and_lengths:
+    input: "inputs/validation/rnachallenge/{validation_type}.fa.gz",
+    output: 
+        validation = "inputs/validation/rnachallenge/{validation_type}.fa",
+        validation_fai = "inputs/validation/rnachallenge/{validation_type}.fa.fai",
+    conda: "envs/seqkit.yml"
     shell:'''
-    awk 'sub(/^>/, "")' {input} > {output}
+    cat {input} | gunzip > {output.validation}
+    seqkit faidx {output.validation}
     '''
 
-rule filter_validation:
+# TER TODO: consider changing the ncrna input path to remove some duplication in the rules
+rule grab_traintest_coding_names_and_lengths:
+    input: expand("outputs/models/rnasamba/build/0_coding/{genome}.fa.gz", genome = GENOMES),
+    output:
+        coding = "outputs/models/rnasamba/build/2_sequence_sets/traintest/all_coding.fa",
+        coding_fai = "outputs/models/rnasamba/build/2_sequence_sets/traintest/all_coding.fa.fai"
+    conda: "envs/seqkit.yml"
+    shell:'''
+    cat {input} | gunzip > {output.coding}
+    seqkit faidx {output.coding}
+    '''
+
+rule grab_traintest_noncoding_names_and_lengths:
+    input: expand("inputs/ensembl/ncrna/{genome}.ncrna.fa.gz", genome = GENOMES),
+    output:
+        noncoding = "outputs/models/rnasamba/build/2_sequence_sets/traintest/all_noncoding.fa",
+        noncoding_fai = "outputs/models/rnasamba/build/2_sequence_sets/traintest/all_noncoding.fa.fai"
+    conda: "envs/seqkit.yml"
+    shell:'''
+    cat {input} | gunzip > {output.noncoding}
+    seqkit faidx {output.noncoding}
+    '''
+
+rule process_sequences_into_nonoverlapping_sets:
+    input: 
+        traintest_fai = expand("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_{set_type}.fa.fai", set_type = SET_TYPES), 
+        validation_fai = expand("inputs/validation/rnachallenge/{validation_type}.fa.fai", validation_type = VALIDATION_TYPES),
+        clusters = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv"
+    output:
+        # TER TODO: the set_name/set_types could be born here, but I need to check the order in which they would be built to make sure files aren't named the wrong thing. actually i could do this by number of lines in the final file. Also need to update the R script to point to the right thing
+        coding_train = "outputs/models/rnasamba/build/2_sequence_sets/coding_train.txt",
+        coding_test = "outputs/models/rnasamba/build/2_sequence_sets/coding_test.txt",
+        noncoding_train = "outputs/models/rnasamba/build/2_sequence_sets/noncoding_train.txt",
+        noncoding_test = "outputs/models/rnasamba/build/2_sequence_sets/noncoding_test.txt",
+        coding_validation = "outputs/models/rnasamba/build/2_sequence_sets/coding_validation.txt",
+        noncoding_validation = "outputs/models/rnasamba/build/2_sequence_sets/noncoding_validation.txt"
+    conda: "envs/tidyverse.yml"
+    script: "scripts/process_sequences_into_nonoverlapping_sets.R"
+
+rule filter_sequence_sets:
     input:
-        fa = "inputs/validation/rnachallenge/{validation_type}.fa",
-        names = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq_names.txt"
-    output: "outputs/models/rnasamba/build/2_sequence_sets/validation/{validation_type}.fa"
+        fa = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq.fasta",
+        names = "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.txt"
+    output: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
     conda: "envs/seqtk.yml"
     shell:'''
     seqtk subseq {input.fa} {input.names} > {output}
-    '''
-
-rule filter_traintest_coding:
-    input:
-        protein_coding = expand("outputs/models/rnasamba/build/0_protein_coding/{genome}.fa.gz", genome = GENOMES),
-        names = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq_names.txt"
-    output:
-        protein_coding = temp("outputs/models/rnasamba/build/2_sequence_sets/all_protein_coding.fa.gz"),
-        protein_coding_filt = "outputs/models/rnasamba/build/2_sequence_sets/protein_coding_traintest.fa"
-    conda: "envs/seqtk.yml"
-    shell:'''
-    cat {input.protein_coding} > {output.protein_coding}
-    seqtk subseq {output.protein_coding} {input.names} > {output.protein_coding_filt}
-    '''
-
-
-rule filter_traintest_noncoding:
-    input:
-        non_coding = expand("inputs/ensembl/ncrna/{genome}.ncrna.fa.gz", genome = GENOMES),
-        names = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq_names.txt"
-    output:
-        non_coding = temp("outputs/models/rnasamba/build/2_sequence_sets/all_non_coding.fa.gz"),
-        non_coding_filt = "outputs/models/rnasamba/build/2_sequence_sets/non_coding_traintest.fa"
-    conda: "envs/seqtk.yml"
-    shell:'''
-    cat {input.non_coding} > {output.non_coding}
-    seqtk subseq {output.non_coding} {input.names} > {output.non_coding_filt}
     '''
 
 ##################################################################
@@ -128,34 +143,19 @@ rule filter_traintest_noncoding:
 ##################################################################
 
 rule get_sequence_statistics:
-    input: "inputs/ensembl/{rna_type}/{genome}.{rna_type}.fa.gz"
-    output: "outputs/models/rnasamba/build/stats/full/{genome}.{rna_type}.tsv"
+    input: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
+    output: "outputs/models/rnasamba/build/stats/full/{set_type}_{set_name}.tsv"
     conda: "envs/seqkit.yml"
     shell:'''
     seqkit stats --all -o {output} -T {input}
     '''
 
-rule get_sequence_statistics_less_than_300_nt_ncrna:
-    input: "inputs/ensembl/ncrna/{genome}.ncrna.fa.gz"
-    output: "outputs/models/rnasamba/build/stats/300nt_or_less/{genome}.ncrna.tsv"
+rule get_sequence_statistics_less_than_300_nt:
+    input: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
+    output: "outputs/models/rnasamba/build/stats/300nt_or_less/{set_type}_{set_name}.tsv"
     conda: "envs/seqkit.yml"
     shell:'''
     seqkit seq --max-len 300 {input} | seqkit stats --all -T -o {output}
-    '''
-rule get_sequence_statistics_less_than_300nt_protein_coding:
-    input: "outputs/models/rnasamba/build/0_protein_coding/{genome}.fa.gz"
-    output: "outputs/models/rnasamba/build/stats/300nt_or_less/{genome}.protein_coding.tsv"
-    conda: "envs/seqkit.yml"
-    shell:'''
-    seqkit seq --max-len 300 {input} | seqkit stats --all -T -o {output}
-    '''
-
-rule get_sequence_statistics_protein_coding:
-    input: "outputs/models/rnasamba/build/0_protein_coding/{genome}.fa.gz" 
-    output: "outputs/models/rnasamba/build/stats/protein_coding/{genome}.protein_coding.tsv"
-    conda: "envs/seqkit.yml"
-    shell:'''
-    seqkit stats --all -T -o {output} {input}
     '''
 
 def read_tsv_files(file_paths):
