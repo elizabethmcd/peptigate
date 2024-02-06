@@ -6,17 +6,17 @@ metadata = pd.read_csv("inputs/models/rnasamba/build/train_data_links.tsv", sep 
 GENOMES = metadata['genome'].unique().tolist()
 RNA_TYPES = ['cdna', 'ncrna'] # inherits names from ensembl
 VALIDATION_TYPES = ['mRNAs', 'ncRNAs'] # inherits names from https://github.com/cbl-nabi/RNAChallenge
-SET_TYPES = ['coding', 'noncoding']
-SET_NAMES = ['train', 'test', 'validation']
+CODING_TYPES = ['coding', 'noncoding']
+DATASET_TYPES = ['train', 'test', 'validation']
 
 rule all:
     input: 
-        expand("outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa", set_type = SET_TYPES, set_name = SET_NAMES),
+        expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa", coding_type = CODING_TYPES, dataset_type = DATASET_TYPES),
         "outputs/models/rnasamba/build/6_stats/set_summary.tsv"
 
 rule download_ensembl_data:
     """
-    Download ensembl cDNA and ncRNA files. 
+    Download ensembl cDNA and ncRNA files.
     Ensembl annotates protein coding and non-coding RNA transcripts in their files.
     This information will be used to separate protein coding from non-coding RNAs to build an RNAsamba model.
     Note this download renames genome files from their names on ensembl to make them simpler to point to.
@@ -115,7 +115,7 @@ rule grab_traintest_noncoding_names_and_lengths:
 
 rule process_sequences_into_nonoverlapping_sets:
     input: 
-        traintest_fai = expand("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_{set_type}.fa.fai", set_type = SET_TYPES), 
+        traintest_fai = expand("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_{coding_type}.fa.fai", coding_type = CODING_TYPES), 
         validation_fai = expand("inputs/validation/rnachallenge/{validation_type}.fa.fai", validation_type = VALIDATION_TYPES),
         clusters = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv"
     output:
@@ -132,8 +132,8 @@ rule process_sequences_into_nonoverlapping_sets:
 rule filter_sequence_sets:
     input:
         fa = "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq.fasta",
-        names = "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.txt"
-    output: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
+        names = "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.txt"
+    output: "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa"
     conda: "envs/seqtk.yml"
     shell:'''
     seqtk subseq {input.fa} {input.names} > {output}
@@ -144,15 +144,15 @@ rule filter_sequence_sets:
 ##################################################################
 
 rule get_sequence_descriptors:
-    input: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
-    output: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa.seqkit.fai"
+    input: "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa"
+    output: "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai"
     conda: "envs/seqkit.yml"
     shell:'''
     seqkit faidx -f {input}
     '''
 
 rule calculate_sequence_statistics:
-    input: expand("outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa.seqkit.fai", set_type = SET_TYPES, set_name = SET_NAMES)
+    input: expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai", coding_type = CODING_TYPES, dataset_type = DATASET_TYPES)
     output: 
         set_summary = "outputs/models/rnasamba/build/6_stats/set_summary.tsv",
         set_length_summary = "outputs/models/rnasamba/build/6_stats/set_length_summary.tsv",
