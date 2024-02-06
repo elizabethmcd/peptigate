@@ -12,7 +12,8 @@ DATASET_TYPES = ['train', 'test', 'validation']
 rule all:
     input: 
         expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa", coding_type = CODING_TYPES, dataset_type = DATASET_TYPES),
-        "outputs/models/rnasamba/build/6_stats/set_summary.tsv"
+        "outputs/models/rnasamba/build/6_stats/set_summary.tsv",
+        "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5"
 
 rule download_ensembl_data:
     """
@@ -79,7 +80,6 @@ rule reduce_sequence_homology:
     mmseqs easy-cluster {input} {params.prefix} tmp_mmseqs2 --min-seq-id 0.8 --cov-mode 1 --cluster-mode 2
     '''
 
-# TER TODO: consider changing the ncrna input path to remove some duplication in the rules
 rule grab_validation_set_names_and_lengths:
     input: "inputs/validation/rnachallenge/{validation_type}.fa.gz",
     output: 
@@ -130,6 +130,22 @@ rule filter_sequence_sets:
     conda: "envs/seqtk.yml"
     shell:'''
     seqtk subseq {input.fa} {input.names} > {output}
+    '''
+
+##################################################################
+## Build RNAsamba model 
+##################################################################
+
+rule build_rnasamba_model:
+    """
+    Build a new rnasamba model from the training data curated above.
+    The --early_stopping parameter reduces training time and can help avoiding overfitting.
+    """
+    input: expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_train.fa", coding_types = CODING_TYPES)
+    output: "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5"
+    conda: "envs/rnasamba.yml"
+    shell:'''
+    rnasamba train --early_stopping --verbose 2 {output} {input[0]} {input[1]}
     '''
 
 ##################################################################
