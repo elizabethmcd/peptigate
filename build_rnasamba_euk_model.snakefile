@@ -11,7 +11,8 @@ SET_NAMES = ['train', 'test', 'validation']
 
 rule all:
     input: 
-        expand("outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa", set_type = SET_TYPES, set_name = SET_NAMES)
+        expand("outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa", set_type = SET_TYPES, set_name = SET_NAMES),
+        "outputs/models/rnasamba/build/6_stats/set_summary.tsv"
 
 rule download_ensembl_data:
     """
@@ -142,56 +143,19 @@ rule filter_sequence_sets:
 ## Get sequence statistics
 ##################################################################
 
-rule get_sequence_statistics:
+rule get_sequence_descriptors:
     input: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
-    output: "outputs/models/rnasamba/build/stats/full/{set_type}_{set_name}.tsv"
+    output: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa.seqkit.fai"
     conda: "envs/seqkit.yml"
     shell:'''
-    seqkit stats --all -o {output} -T {input}
+    seqkit faidx -f {input}
     '''
 
-rule get_sequence_statistics_less_than_300_nt:
-    input: "outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa"
-    output: "outputs/models/rnasamba/build/stats/300nt_or_less/{set_type}_{set_name}.tsv"
-    conda: "envs/seqkit.yml"
-    shell:'''
-    seqkit seq --max-len 300 {input} | seqkit stats --all -T -o {output}
-    '''
-
-def read_tsv_files(file_paths):
-    all_data = [] 
-    
-    for file_path in file_paths:
-        file_name = re.sub("outputs/models/rnasamba/build/stats/", "", file_path)
-        file_type = re.sub("/.*", "", file_name)
-        if "cdna" in file_name:
-            rna_type = "cnda"
-        elif "ncrna" in file_name:
-            rna_type = "ncrna"
-        else:
-            rna_type = "protein_coding"
-        rm_from_genome_str1 = "." + rna_type + ".tsv" 
-        genome = re.sub(rm_from_genome_str1, "", file_name)
-        rm_from_genome_str2 = file_type + "/"
-        genome = re.sub(rm_from_genome_str2, "", genome)
-        df = pd.read_csv(file_path, sep='\t', header=0)
-        df['file_type'] = file_type
-        df['rna_type'] = rna_type
-        df['genome'] = genome 
-        all_data.append(df)
-    
-    # Concatenate all dataframes
-    combined_df = pd.concat(all_data, ignore_index=True)
-    return combined_df
-
-
-rule combine_stats_files:
-    input:
-        expand("outputs/models/rnasamba/build/stats/full/{genome}.{rna_type}.tsv", rna_type = RNA_TYPES, genome = GENOMES),
-        expand("outputs/models/rnasamba/build/stats/300nt_or_less/{genome}.ncrna.tsv", genome = GENOMES),
-        expand("outputs/models/rnasamba/build/stats/300nt_or_less/{genome}.protein_coding.tsv", genome = GENOMES),
-        expand("outputs/models/rnasamba/build/stats/protein_coding/{genome}.protein_coding.tsv", genome = GENOMES)
-    output: "outputs/models/rnasamba/build/stats.tsv"
-    run:
-        combined_df = read_tsv_files(input)
-        combined_df.to_csv(str(output), sep = "\t")
+rule calculate_sequence_statistics:
+    input: expand("outputs/models/rnasamba/build/2_sequence_sets/{set_type}_{set_name}.fa.seqkit.fai", set_type = SET_TYPES, set_name = SET_NAMES)
+    output: 
+        set_summary = "outputs/models/rnasamba/build/6_stats/set_summary.tsv",
+        set_length_summary = "outputs/models/rnasamba/build/6_stats/set_length_summary.tsv",
+        set_length_genome_summary = "outputs/models/rnasamba/build/6_stats/set_length_genome_summary.tsv" 
+    conda: "envs/tidyverse.yml"
+    script: "scripts/calculate_sequence_statistics.R"

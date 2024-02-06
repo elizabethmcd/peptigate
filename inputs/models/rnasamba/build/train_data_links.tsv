@@ -1,9 +1,9 @@
-organism	root	filename	cdna_suffix	ncrna_suffix
-human	https://ftp.ensembl.org/pub/release-111/fasta/homo_sapiens/	Homo_sapiens.GRCh38	cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz	ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz
-yeast	https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/release-58/fasta/saccharomyces_cerevisiae/	Saccharomyces_cerevisiae.R64-1-1	cdna/Saccharomyces_cerevisiae.R64-1-1.cdna.all.fa.gz	ncrna/Saccharomyces_cerevisiae.R64-1-1.ncrna.fa.gz
-worm	https://ftp.ensemblgenomes.ebi.ac.uk/pub/metazoa/release-58/fasta/caenorhabditis_elegans/	Caenorhabditis_elegans.WBcel235	cdna/Caenorhabditis_elegans.WBcel235.cdna.all.fa.gz	ncrna/Caenorhabditis_elegans.WBcel235.ncrna.fa.gz
-arabadopsis	https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/release-58/fasta/arabidopsis_thaliana/	Arabidopsis_thaliana.TAIR10	cdna/Arabidopsis_thaliana.TAIR10.cdna.all.fa.gz	ncrna/Arabidopsis_thaliana.TAIR10.ncrna.fa.gz
-drosophila	https://ftp.ensemblgenomes.ebi.ac.uk/pub/metazoa/release-58/fasta/drosophila_melanogaster/	Drosophila_melanogaster.BDGP6.46	cdna/Drosophila_melanogaster.BDGP6.46.cdna.all.fa.gz	ncrna/Drosophila_melanogaster.BDGP6.46.ncrna.fa.gz
-dictyostelium_discoideum	https://ftp.ensemblgenomes.ebi.ac.uk/pub/protists/release-58/fasta/dictyostelium_discoideum/	Dictyostelium_discoideum.dicty_2.7	cdna/Dictyostelium_discoideum.dicty_2.7.cdna.all.fa.gz	ncrna/Dictyostelium_discoideum.dicty_2.7.ncrna.fa.gz
-mouse	https://ftp.ensembl.org/pub/release-111/fasta/mus_musculus/	Mus_musculus.GRCm39	cdna/Mus_musculus.GRCm39.cdna.all.fa.gz	ncrna/Mus_musculus.GRCm39.ncrna.fa.gz
-zebrafish	https://ftp.ensembl.org/pub/release-111/fasta/danio_rerio/	Danio_rerio.GRCz11	cdna/Danio_rerio.GRCz11.cdna.all.fa.gz	ncrna/Danio_rerio.GRCz11.ncrna.fa.gz
+organism	root_url	genome	cdna_suffix	ncrna_suffix	genome_abbreviation
+human	https://ftp.ensembl.org/pub/release-111/fasta/homo_sapiens/	Homo_sapiens.GRCh38	cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz	ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz	GRCh38
+yeast	https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/release-58/fasta/saccharomyces_cerevisiae/	Saccharomyces_cerevisiae.R64-1-1	cdna/Saccharomyces_cerevisiae.R64-1-1.cdna.all.fa.gz	ncrna/Saccharomyces_cerevisiae.R64-1-1.ncrna.fa.gz	R64-1-1
+worm	https://ftp.ensemblgenomes.ebi.ac.uk/pub/metazoa/release-58/fasta/caenorhabditis_elegans/	Caenorhabditis_elegans.WBcel235	cdna/Caenorhabditis_elegans.WBcel235.cdna.all.fa.gz	ncrna/Caenorhabditis_elegans.WBcel235.ncrna.fa.gz	WBcel235
+arabadopsis	https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/release-58/fasta/arabidopsis_thaliana/	Arabidopsis_thaliana.TAIR10	cdna/Arabidopsis_thaliana.TAIR10.cdna.all.fa.gz	ncrna/Arabidopsis_thaliana.TAIR10.ncrna.fa.gz	TAIR10
+drosophila	https://ftp.ensemblgenomes.ebi.ac.uk/pub/metazoa/release-58/fasta/drosophila_melanogaster/	Drosophila_melanogaster.BDGP6.46	cdna/Drosophila_melanogaster.BDGP6.46.cdna.all.fa.gz	ncrna/Drosophila_melanogaster.BDGP6.46.ncrna.fa.gz	BDGP6.46
+dictyostelium_discoideum	https://ftp.ensemblgenomes.ebi.ac.uk/pub/protists/release-58/fasta/dictyostelium_discoideum/	Dictyostelium_discoideum.dicty_2.7	cdna/Dictyostelium_discoideum.dicty_2.7.cdna.all.fa.gz	ncrna/Dictyostelium_discoideum.dicty_2.7.ncrna.fa.gz	dicty_2.7
+mouse	https://ftp.ensembl.org/pub/release-111/fasta/mus_musculus/	Mus_musculus.GRCm39	cdna/Mus_musculus.GRCm39.cdna.all.fa.gz	ncrna/Mus_musculus.GRCm39.ncrna.fa.gz	GRCm39
+zebrafish	https://ftp.ensembl.org/pub/release-111/fasta/danio_rerio/	Danio_rerio.GRCz11	cdna/Danio_rerio.GRCz11.cdna.all.fa.gz	ncrna/Danio_rerio.GRCz11.ncrna.fa.gz	GRCz11
