@@ -1,0 +1,12 @@
+channels:
+   - conda-forge
+   - bioconda
+   - defaults
+dependencies:
+   - python=3.7
+   - biopython=1.79
+   - pip=24.0
+   - pip:
+     - torch==1.0.0
+     - git+https://github.com/nishanthmerwin/fastai.git@deepripp_install
+     - git+https://github.com/magarveylab/nlpprecursor

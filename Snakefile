@@ -116,3 +116,43 @@ rule rnasamba:
 
 ## TODO: predict sORFs from lncRNAs
 
+################################################################################
+## cleavage prediction
+################################################################################
+
+rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
+    input: orfs_amino_acids
+    output: "outputs/cleavage/preprocessing/noasterisk.faa"
+    shell:'''
+    sed '/^[^>]/s/\*//g' {input} > {output}
+    '''
+
+rule download_nlpprecursor_models:
+    output:
+        tar = "inputs/models/nlpprecursor/nlpprecursor_models.tar.gz",
+        model = "inputs/models/nlpprecursor/models/annotation/model.p"
+    params: outdir = "inputs/models/nlpprecursor"
+    shell:'''
+    curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
+    tar xf {output.tar} -C {params.outdir} 
+    '''
+
+rule nlpprecursor:
+    """
+    The nlpprecursor tool is part of the [DeepRiPP approach](https://doi.org/10.1073/pnas.1901493116) that predicts ribosomally synthesized postranslationally modified peptides, a subclass of cleavage peptides.
+    Unlike many tools in the RiPP prediction space, "NLPPrecursor identifies RiPPs independent of genomic context and neighboring biosynthetic genes."
+    Note the paper suggests, "the precursor cleavage algorithm predicted N-terminal cleavage sites with 90% accuracy, when considering cleavage points ±5 amino acids from the true prediction site, a range within which all possible complete chemical structures can be elaborated in silico by combinatorial structure prediction."    
+    From the DeepRiPP paper supplement: "Protein sequences of open reading frames are used as input.
+    The output of the model consists of a classification of each ORF as either a precursor peptide (further subclassified according to RiPP family), or a non-precursor peptide. 
+    A total of 14 classes are identified (n_class)."
+    """
+    input: 
+        faa = "outputs/cleavage/preprocessing/noasterisk.faa",
+        model = "inputs/models/nlpprecursor/models/annotation/model.p"
+    output: "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv"
+    params = modelsdir = "inputs/models/nlpprecursor/models/"
+    conda: "envs/nlpprecursor.yml"
+    shell:'''
+    python scripts/run_nlpprecursor.py {params.modelsdir} {input} {output}
+    '''
+
