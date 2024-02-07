@@ -140,12 +140,13 @@ rule build_rnasamba_model:
     """
     Build a new rnasamba model from the training data curated above.
     The --early_stopping parameter reduces training time and can help avoiding overfitting.
+    It is the number of epochs after lowest validation loss before stopping training.
     """
-    input: expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_train.fa", coding_types = CODING_TYPES)
+    input: expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_train.fa", coding_type = CODING_TYPES)
     output: "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5"
     conda: "envs/rnasamba.yml"
     shell:'''
-    rnasamba train --early_stopping --verbose 2 {output} {input[0]} {input[1]}
+    rnasamba train --early_stopping 5 --verbose 2 {output} {input[0]} {input[1]}
     '''
 
 ##################################################################
