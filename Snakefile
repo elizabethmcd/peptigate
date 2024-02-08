@@ -44,6 +44,8 @@ rule filter_nt_contigs_to_short:
     cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
     '''
 
+# TER TODO: Add a rule for sORF prediction, either once smallesm is developed, when there is an accurate sORF rnasamba model, or another tool from Singh & Roy.
+
 rule filter_nt_contigs_to_long:
     input: all_contigs = all_contigs
     output: temp("outputs/sORF/long_contigs/contigs300.fa")
@@ -64,7 +66,7 @@ rule get_coding_contig_names:
     seqkit seq -n {input} | sed 's/[.].*$//' > {output}
     '''
 
-rule filter_long_contigs_to_noncoding:
+rule filter_long_contigs_to_no_predicted_ORF:
     '''
     Many of the contigs in the full transcriptome have predicted ORFs.
     The names of these contigs are recorded in the transdecoder input files (*pep and *cds, orfs_*).
@@ -80,39 +82,33 @@ rule filter_long_contigs_to_noncoding:
     seqkit grep -v -f {input.names} {input.fa} -o {output}
     '''
 
-rule download_rnasamba_model:
-    """
-    The RNAsamba model was trained on human but had good predictive accuracy for distantly related model organisms.
-    Accuracy did drop for drosophila and zebrafish, however the authors suggest that this might be due to inaccuracies in annotations in these two species.
-    While they don't investigate further, I find their claim convincing.
-    This reinforced to me that the quality of the training data is more important than the species it originates from.
-    Strong performance in C. elegans and Arabadopsis also suggests that the human model is sufficient for diverse organisms.
-    """
-    output: "inputs/models/rnasamba/full_length_weights.hdf"
-    conda: "envs/wget.yml"
-    shell:'''
-    wget -O {output} https://raw.githubusercontent.com/apcamargo/RNAsamba/master/data/full_length_weights.hdf
-    '''
+#rule download_rnasamba_model:
+#    """
+#    Place holder rule.
+#    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it. 
+#    """
+#    output: "inputs/models/rnasamba/full_length_weights.hdf"
+#    conda: "envs/wget.yml"
+#    shell:'''
+#    wget -O {output} https://raw.githubusercontent.com/apcamargo/RNAsamba/master/data/full_length_weights.hdf
+#    '''
 
 rule rnasamba:
     """
-    RNAsamba will run on both the short and long contigs.
-    For short contigs, it assess their coding potential.
-    Short contigs that have coding potential may encode peptides.
-    For long contigs, it assesses whether they are long noncoding RNAs.
+    RNAsamba is only accurate on longer contigs.
+    It assesses whether they are long noncoding RNAs.
     LncRNAs often have sORFs that encode peptides.
     """
     input:
         model = "inputs/models/rnasamba/full_length_weights.hdf",
-        contigs = "outputs/sORF/{length}_contigs/{length}_contigs.fa"
+        contigs = "outputs/sORF/long_contigs/long_contigs.fa"
     output:
-        tsv = "outputs/sORF/{length}_contigs/rnasamba/classification.tsv",
-        fa  = "outputs/sORF/{length}_contigs/rnasamba/predicted_proteins.fa"
-    # TODO: update rnasamba installation according to tests
+        tsv = "outputs/sORF/long_contigs/rnasamba/classification.tsv",
+        fa  = "outputs/sORF/long_contigs/rnasamba/predicted_proteins.fa"
     conda: "envs/rnasamba.yml"
     shell:'''
     rnasamba classify -p {output.fa} {output.tsv} {input.all_contigs} {input.model}
     '''
 
-## TODO: predict sORFs from lncRNAs
+## TER TODO: predict sORFs from lncRNAs
 
