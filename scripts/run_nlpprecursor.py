@@ -45,7 +45,7 @@ def main(models_dir, multifasta_file, output_tsv):
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>")
+        print("Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>")
         sys.exit(1)
 
     models_dir = sys.argv[1]

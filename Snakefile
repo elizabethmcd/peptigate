@@ -11,7 +11,7 @@
 # - orthofuser_final_clean.fa.dammit.fasta: all contigs as nucleotide sequences. Used to identify contigs shorter than X nucleotides (300) to scan for sORFs and to predict lncRNAs, which may have sORFs embedded in them.
  
 short_contigs = config.get("short_contigs", "inputs/reads2transcriptome_outputs/small_contigs.fa")
-orfs_amino_acids = config.get("orfs_amino_acids", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.pep")
+orfs_amino_acids = config.get("orfs_amino_acids", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.pep_head")
 orfs_nucleotides = config.get("orfs_nucleotides", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.cds")
 all_contigs = config.get("all_contigs", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta")
 
@@ -120,12 +120,23 @@ rule rnasamba:
 ## cleavage prediction
 ################################################################################
 
+rule cleavage:
+    """
+    Defines a target rule for cleavage prediction so a user can run only cleavage prediction if they desire.
+    snakemake cleavage --software-deployment-method conda -j 8 
+    """
+    input:
+        "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+        "outputs/cleavage/deeppetide/peptide_predictions.json"
+
 rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input: orfs_amino_acids
     output: "outputs/cleavage/preprocessing/noasterisk.faa"
     shell:'''
     sed '/^[^>]/s/\*//g' {input} > {output}
     '''
+
+# Ribosomally synthesized and post-translationally modified peptide prediction
 
 rule download_nlpprecursor_models:
     output:
@@ -150,9 +161,28 @@ rule nlpprecursor:
         faa = "outputs/cleavage/preprocessing/noasterisk.faa",
         model = "inputs/models/nlpprecursor/models/annotation/model.p"
     output: "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv"
-    params = modelsdir = "inputs/models/nlpprecursor/models/"
+    params: modelsdir = "inputs/models/nlpprecursor/models/"
     conda: "envs/nlpprecursor.yml"
     shell:'''
-    python scripts/run_nlpprecursor.py {params.modelsdir} {input} {output}
+    python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
     '''
 
+# General Cleavage peptide prediction
+
+rule clone_deeppeptide:
+    output: "cloned_repositories/DeepPeptide/LICENSE"
+    shell:'''
+    cd cloned_repositories
+    git clone https://github.com/fteufel/DeepPeptide.git
+    '''
+
+rule deeppeptide:
+    input:
+        src = "cloned_repositories/DeepPeptide/LICENSE",
+        faa = "outputs/cleavage/preprocessing/noasterisk.faa"
+    output: "outputs/cleavage/deeppetide/peptide_predictions.json"
+    conda: "envs/deeppeptide.yml"
+    params: outdir = "outputs/cleavage/deeppetide/"
+    shell:'''
+    cd cloned_respositories/DeepPeptide/predictor && python3 predict.py --fastafile {input} --output_dir {params.outdir} --output_fmt json
+    '''
