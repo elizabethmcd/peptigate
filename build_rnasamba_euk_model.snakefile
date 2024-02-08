@@ -11,9 +11,8 @@ DATASET_TYPES = ['train', 'test', 'validation']
 
 rule all:
     input: 
-        expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa", coding_type = CODING_TYPES, dataset_type = DATASET_TYPES),
-        "outputs/models/rnasamba/build/6_stats/set_summary.tsv",
-        "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5"
+        "outputs/models/rnasamba/build/5_stats/set_summary.tsv",
+        expand("outputs/models/rnasamba/build/4_evaluation/accuracy_metrics_{dataset_type}.tsv", dataset_type = DATASET_TYPES)
 
 rule download_ensembl_data:
     """
@@ -149,6 +148,27 @@ rule build_rnasamba_model:
     rnasamba train --early_stopping 5 --verbose 2 {output} {input[0]} {input[1]}
     '''
 
+rule assess_rnasamba_model:
+    input: 
+        model = "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        faa = "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa"
+    output:
+        faa = "outputs/models/rnasamba/build/4_evaluation/{coding_type}_{dataset_type}.fa",
+        predictions = "outputs/models/rnasamba/build/4_evaluation/{coding_type}_{dataset_type}.tsv"
+    benchmark: "benchmarks/models/rnasamba/build/4_evaluation/{coding_type}_{dataset_type}.tsv"
+    conda: "envs/rnasamba.yml"
+    shell:'''
+    rnasamba classify --protein_fasta {output.faa} {output.predictions} {input.faa} {input.model}
+    '''
+
+rule calculate_rnasamba_model_accuracy:
+    input: expand("outputs/models/rnasamba/build/4_evaluation/{coding_type}_{{dataset_type}}.tsv", coding_type = CODING_TYPES)
+    output: 
+        freq = "outputs/models/rnasamba/build/4_evaluation/confusionmatrix_{dataset_type}.tsv",
+        metrics = "outputs/models/rnasamba/build/4_evaluation/accuracy_metrics_{dataset_type}.tsv"
+    conda: "envs/caret.yml"
+    script: "scripts/calculate_rnasamba_model_accuracy.R"
+
 ##################################################################
 ## Get sequence statistics
 ##################################################################
@@ -164,8 +184,8 @@ rule get_sequence_descriptors:
 rule calculate_sequence_statistics:
     input: expand("outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai", coding_type = CODING_TYPES, dataset_type = DATASET_TYPES)
     output: 
-        set_summary = "outputs/models/rnasamba/build/6_stats/set_summary.tsv",
-        set_length_summary = "outputs/models/rnasamba/build/6_stats/set_length_summary.tsv",
-        set_length_genome_summary = "outputs/models/rnasamba/build/6_stats/set_length_genome_summary.tsv" 
+        set_summary = "outputs/models/rnasamba/build/5_stats/set_summary.tsv",
+        set_length_summary = "outputs/models/rnasamba/build/5_stats/set_length_summary.tsv",
+        set_length_genome_summary = "outputs/models/rnasamba/build/5_stats/set_length_genome_summary.tsv" 
     conda: "envs/tidyverse.yml"
     script: "scripts/calculate_sequence_statistics.R"
