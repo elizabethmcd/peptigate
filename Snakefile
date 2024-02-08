@@ -184,5 +184,5 @@ rule deeppeptide:
     conda: "envs/deeppeptide.yml"
     params: outdir = "outputs/cleavage/deeppetide/"
     shell:'''
-    cd cloned_respositories/DeepPeptide/predictor && python3 predict.py --fastafile {input} --output_dir {params.outdir} --output_fmt json
+    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {input.faa} --output_dir {params.outdir} --output_fmt json
     '''
