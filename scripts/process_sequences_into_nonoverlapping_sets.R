@@ -1,6 +1,5 @@
 library(readr)
 library(dplyr)
-# library(sourmashconsumr)
 
 # functions ---------------------------------------------------------------
 
@@ -22,14 +21,6 @@ noncoding_validation <- read_tsv(unlist(snakemake@input[['validation_fai']])[2],
 coding_traintest <- read_tsv(unlist(snakemake@input[['traintest_fai']])[1], col_names = fai_col_names)
 noncoding_traintest <- read_tsv(unlist(snakemake@input[['traintest_fai']])[2], col_names = fai_col_names)
 
-# check overlap between sets ----------------------------------------------
-
-# upset_df <- from_list_to_upset_df(list(noncoding_validation = noncoding_validation$sequence,
-#                                        coding_validation = coding_validation$sequence,
-#                                        noncoding_traintest = noncoding_traintest$sequence,
-#                                        coding_traintest = coding_traintest$sequence,
-#                                        cluster_rep = unique(clusters$rep)))
-
 # filter to non-overlapping sets ------------------------------------------
 
 noncoding_validation_filtered <- noncoding_validation %>%
@@ -47,13 +38,6 @@ noncoding_traintest_filtered <- noncoding_traintest %>%
 
 coding_traintest_filtered <- coding_traintest %>%
   filter(sequence %in% clusters$rep) # keep sequences that had =<80% homology to other sequences
-
-# confirm no unexpected overlap between data sets -----------------------
-# upset_df_filtered <- from_list_to_upset_df(list(noncoding_validation = noncoding_validation_filtered$sequence,
-#                                                 coding_validation = coding_validation_filtered$sequence,
-#                                                 noncoding_traintest = noncoding_traintest_filtered$sequence,
-#                                                 coding_traintest = coding_traintest_filtered$sequence,
-#                                                 cluster_rep = unique(clusters$rep)))
 
 # subsample the coding traintest set to balance sizes  ------------------
 
