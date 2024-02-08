@@ -127,7 +127,7 @@ rule cleavage:
     """
     input:
         "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
-        "outputs/cleavage/deeppetide/peptide_predictions.json"
+        "outputs/cleavage/deeppeptide/peptides.faa"
 
 rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input: orfs_amino_acids
@@ -185,4 +185,22 @@ rule deeppeptide:
     params: outdir = "outputs/cleavage/deeppeptide/"
     shell:'''
     cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir} --output_fmt json
+    mv outputs/cleavage/deeppeptide/ ../../../outputs/cleavage/
+    '''
+
+rule extract_deeppeptide_sequences:
+    """
+    DeepPeptide outputs a json file of peptide predictions and locations, but does not output the sequences themselves.
+    This step parses the JSON file and the protein FASTA from which peptides were predicted.
+    It outputs the propeptide (full ORF, uncleaved) as well as the predicted peptide sequence (cleaved) in FASTA format.
+    """
+    input:  
+        faa = "outputs/cleavage/preprocessing/noasterisk.faa",
+        json = "outputs/cleavage/deeppeptide/peptide_predictions.json"
+    output:
+        propeptide = "outputs/cleavage/deeppeptide/propeptides.faa" ,
+        peptide = "outputs/cleavage/deeppeptide/peptides.faa"
+    conda: "envs/deeppeptide.yml"
+    shell:'''
+    python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
     '''
