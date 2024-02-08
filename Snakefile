@@ -132,9 +132,9 @@ rule cleavage:
 rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input: orfs_amino_acids
     output: "outputs/cleavage/preprocessing/noasterisk.faa"
-    shell:'''
+    shell:"""
     sed '/^[^>]/s/\*//g' {input} > {output}
-    '''
+    """
 
 # Ribosomally synthesized and post-translationally modified peptide prediction
 
