@@ -8,11 +8,12 @@ RNA_TYPES = ['cdna', 'ncrna'] # inherits names from ensembl
 VALIDATION_TYPES = ['mRNAs', 'ncRNAs'] # inherits names from https://github.com/cbl-nabi/RNAChallenge
 CODING_TYPES = ['coding', 'noncoding']
 DATASET_TYPES = ['train', 'test', 'validation']
+MODEL_TYPES = ['eu', 'human']
 
 rule all:
     input: 
         "outputs/models/rnasamba/build/5_stats/set_summary.tsv",
-        expand("outputs/models/rnasamba/build/4_evaluation/accuracy_metrics_{dataset_type}.tsv", dataset_type = DATASET_TYPES)
+        expand("outputs/models/rnasamba/build/4_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv", model_type = MODEL_TYPES, dataset_type = DATASET_TYPES)
 
 rule download_ensembl_data:
     """
@@ -150,24 +151,35 @@ rule build_rnasamba_model:
 
 rule assess_rnasamba_model:
     input: 
-        model = "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        model = "outputs/models/rnasamba/build/3_model/{model_type}_rnasamba.hdf5",
         faa = "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa"
     output:
-        faa = "outputs/models/rnasamba/build/4_evaluation/{coding_type}_{dataset_type}.fa",
-        predictions = "outputs/models/rnasamba/build/4_evaluation/{coding_type}_{dataset_type}.tsv"
-    benchmark: "benchmarks/models/rnasamba/build/4_evaluation/{coding_type}_{dataset_type}.tsv"
+        faa = "outputs/models/rnasamba/build/4_evaluation/{model_type}/{coding_type}_{dataset_type}.fa",
+        predictions = "outputs/models/rnasamba/build/4_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv"
+    benchmark: "benchmarks/models/rnasamba/build/4_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv"
     conda: "envs/rnasamba.yml"
     shell:'''
     rnasamba classify --protein_fasta {output.faa} {output.predictions} {input.faa} {input.model}
     '''
 
 rule calculate_rnasamba_model_accuracy:
-    input: expand("outputs/models/rnasamba/build/4_evaluation/{coding_type}_{{dataset_type}}.tsv", coding_type = CODING_TYPES)
+    input: expand("outputs/models/rnasamba/build/4_evaluation/{{model_type}}/{coding_type}_{{dataset_type}}.tsv", coding_type = CODING_TYPES)
     output: 
-        freq = "outputs/models/rnasamba/build/4_evaluation/confusionmatrix_{dataset_type}.tsv",
-        metrics = "outputs/models/rnasamba/build/4_evaluation/accuracy_metrics_{dataset_type}.tsv"
+        freq = "outputs/models/rnasamba/build/4_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
+        metrics = "outputs/models/rnasamba/build/4_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv"
     conda: "envs/caret.yml"
     script: "scripts/calculate_rnasamba_model_accuracy.R"
+
+
+rule download_rnasamba_human_model:
+    """
+    Use this model to compare whether the new model performs better or worse.
+    It's saved under a new name so we can use a wildcard to run rnasamba classify and to calculate model accuracy.
+    """
+    output: "outputs/models/rnasamba/build/3_model/human_rnasamba.hdf5",
+    shell:'''
+    curl -JLo {output} https://github.com/apcamargo/RNAsamba/raw/master/data/full_length_weights.hdf5
+    '''
 
 ##################################################################
 ## Get sequence statistics
