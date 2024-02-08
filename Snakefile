@@ -180,9 +180,9 @@ rule deeppeptide:
     input:
         src = "cloned_repositories/DeepPeptide/LICENSE",
         faa = "outputs/cleavage/preprocessing/noasterisk.faa"
-    output: "outputs/cleavage/deeppetide/peptide_predictions.json"
+    output: "outputs/cleavage/deeppeptide/peptide_predictions.json"
     conda: "envs/deeppeptide.yml"
-    params: outdir = "outputs/cleavage/deeppetide/"
+    params: outdir = "outputs/cleavage/deeppeptide/"
     shell:'''
-    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {input.faa} --output_dir {params.outdir} --output_fmt json
+    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir} --output_fmt json
     '''
