@@ -14,11 +14,12 @@ sys.modules["protai"] = nlpprecursor
 def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     Attempts to call the predict function up to a maximum number of attempts.
-    On first attempt to call this function on a GPU, the function produces a RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED.
+    On first attempt to call this function on a GPU,
+    the function produces a RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED.
     Second execution succeeds.
     Execution fails on the @classmethod predict(), on the line `predictions = model(tokens)[0]`.
     Args:
-        predict_function: The prediction function to call. In this case, CDG.predict, since it's the first predict function called in the script.
+        predict_function: The prediction function to call (CDG.predict since it's the first called).
         *args: Arguments to pass to the prediction function.
         max_attempts (int): Maximum number of attempts to make.
         sleep_time (int or float): Time to wait between attempts, in seconds.
@@ -68,10 +69,10 @@ def main(models_dir, multifasta_file, output_tsv):
     cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, sequences)
 
     # The output of nlpprecursor predictions are in JSON format.
-    # The code below parses the json into a TSV format, which is easier for downstream tools to parse.
+    # The code below parses the JSON into a TSV format.
     with open(output_tsv, "w") as f:
         f.write(
-            "Name\tClass\tClass Score\tCleavage Sequence\tCleavage Start\tCleavage Stop\tCleavage Score\n"
+            "name\tclass\tclass_score\tcleavage_sequence\tcleavage_start\tcleavage_stop\tcleavage_score\n"
         )
 
         for i in range(len(sequences)):
@@ -88,9 +89,7 @@ def main(models_dir, multifasta_file, output_tsv):
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print(
-            "Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>"
-        )
+        print("Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>")
         sys.exit(1)
 
     models_dir = sys.argv[1]
