@@ -23,6 +23,7 @@ all_contigs = config.get(
     "all_contigs", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta"
 )
 
+
 rule all:
     input:
         "outputs/sORF/long_contigs/rnasamba/classification.tsv",
@@ -145,11 +146,13 @@ rule rnasamba:
     rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
     """
 
+
 ## TER TODO: predict sORFs from lncRNAs
 
 ################################################################################
 ## cleavage prediction
 ################################################################################
+
 
 rule cleavage:
     """
@@ -158,26 +161,35 @@ rule cleavage:
     """
     input:
         "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
-        "outputs/cleavage/deeppeptide/peptides.faa"
+        "outputs/cleavage/deeppeptide/peptides.faa",
+
 
 rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
-    input: orfs_amino_acids
-    output: "outputs/cleavage/preprocessing/noasterisk.faa"
-    shell:"""
+    input:
+        orfs_amino_acids,
+    output:
+        "outputs/cleavage/preprocessing/noasterisk.faa",
+    shell:
+        """
     sed '/^[^>]/s/\*//g' {input} > {output}
     """
 
+
 # Ribosomally synthesized and post-translationally modified peptide prediction
+
 
 rule download_nlpprecursor_models:
     output:
-        tar = "inputs/models/nlpprecursor/nlpprecursor_models.tar.gz",
-        model = "inputs/models/nlpprecursor/models/annotation/model.p"
-    params: outdir = "inputs/models/nlpprecursor"
-    shell:'''
+        tar="inputs/models/nlpprecursor/nlpprecursor_models.tar.gz",
+        model="inputs/models/nlpprecursor/models/annotation/model.p",
+    params:
+        outdir="inputs/models/nlpprecursor",
+    shell:
+        """
     curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
     tar xf {output.tar} -C {params.outdir} 
-    '''
+    """
+
 
 rule nlpprecursor:
     """
@@ -188,36 +200,50 @@ rule nlpprecursor:
     The output of the model consists of a classification of each ORF as either a precursor peptide (further subclassified according to RiPP family), or a non-precursor peptide. 
     A total of 14 classes are identified (n_class)."
     """
-    input: 
-        faa = "outputs/cleavage/preprocessing/noasterisk.faa",
-        model = "inputs/models/nlpprecursor/models/annotation/model.p"
-    output: "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv"
-    params: modelsdir = "inputs/models/nlpprecursor/models/"
-    conda: "envs/nlpprecursor.yml"
-    shell:'''
+    input:
+        faa="outputs/cleavage/preprocessing/noasterisk.faa",
+        model="inputs/models/nlpprecursor/models/annotation/model.p",
+    output:
+        "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+    params:
+        modelsdir="inputs/models/nlpprecursor/models/",
+    conda:
+        "envs/nlpprecursor.yml"
+    shell:
+        """
     python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
-    '''
+    """
+
 
 # General Cleavage peptide prediction
 
+
 rule clone_deeppeptide:
-    output: "cloned_repositories/DeepPeptide/LICENSE"
-    shell:'''
+    output:
+        "cloned_repositories/DeepPeptide/LICENSE",
+    shell:
+        """
     cd cloned_repositories
     git clone https://github.com/fteufel/DeepPeptide.git
-    '''
+    """
+
 
 rule deeppeptide:
     input:
-        src = "cloned_repositories/DeepPeptide/LICENSE",
-        faa = "outputs/cleavage/preprocessing/noasterisk.faa"
-    output: "outputs/cleavage/deeppeptide/peptide_predictions.json"
-    conda: "envs/deeppeptide.yml"
-    params: outdir = "outputs/cleavage/deeppeptide/"
-    shell:'''
+        src="cloned_repositories/DeepPeptide/LICENSE",
+        faa="outputs/cleavage/preprocessing/noasterisk.faa",
+    output:
+        "outputs/cleavage/deeppeptide/peptide_predictions.json",
+    conda:
+        "envs/deeppeptide.yml"
+    params:
+        outdir="outputs/cleavage/deeppeptide/",
+    shell:
+        """
     cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir} --output_fmt json
     mv outputs/cleavage/deeppeptide/ ../../../outputs/cleavage/
-    '''
+    """
+
 
 rule extract_deeppeptide_sequences:
     """
@@ -225,13 +251,15 @@ rule extract_deeppeptide_sequences:
     This step parses the JSON file and the protein FASTA from which peptides were predicted.
     It outputs the propeptide (full ORF, uncleaved) as well as the predicted peptide sequence (cleaved) in FASTA format.
     """
-    input:  
-        faa = "outputs/cleavage/preprocessing/noasterisk.faa",
-        json = "outputs/cleavage/deeppeptide/peptide_predictions.json"
+    input:
+        faa="outputs/cleavage/preprocessing/noasterisk.faa",
+        json="outputs/cleavage/deeppeptide/peptide_predictions.json",
     output:
-        propeptide = "outputs/cleavage/deeppeptide/propeptides.faa" ,
-        peptide = "outputs/cleavage/deeppeptide/peptides.faa"
-    conda: "envs/deeppeptide.yml"
-    shell:'''
+        propeptide="outputs/cleavage/deeppeptide/propeptides.faa",
+        peptide="outputs/cleavage/deeppeptide/peptides.faa",
+    conda:
+        "envs/deeppeptide.yml"
+    shell:
+        """
     python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
-    '''
+    """
