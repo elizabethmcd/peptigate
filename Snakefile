@@ -112,16 +112,15 @@ rule filter_long_contigs_to_no_predicted_ORF:
     """
 
 
-# rule download_rnasamba_model:
-#    """
-#    Place holder rule.
-#    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
-#    """
-#    output: "inputs/models/rnasamba/eu_rnasamba.hdf5"
-#    conda: "envs/wget.yml"
-#    shell:'''
-#    wget -O {output}
-#    '''
+rule download_rnasamba_model:
+    """
+    Place holder rule.
+    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
+    """
+    output: "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+    shell:'''
+    curl -JLo {output} # TODO add URL for download
+    '''
 
 
 rule rnasamba:
