@@ -1,10 +1,11 @@
 import sys
-from nlpprecursor.classification.data import DatasetGenerator as CDG
-from nlpprecursor.annotation.data import DatasetGenerator as ADG
+import time
 from pathlib import Path
+
 import nlpprecursor
 from Bio import SeqIO
-import time
+from nlpprecursor.annotation.data import DatasetGenerator as ADG
+from nlpprecursor.classification.data import DatasetGenerator as CDG
 
 # This allows for backwards compatibility of the pickled models.
 sys.modules["protai"] = nlpprecursor
