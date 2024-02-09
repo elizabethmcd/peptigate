@@ -16,20 +16,18 @@ orfs_nucleotides = config.get("orfs_nucleotides", "inputs/reads2transcriptome_ou
 all_contigs = config.get("all_contigs", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta")
 
 rule all:
-    input:
+    input: "outputs/sORF/long_contigs/rnasamba/classification.tsv",
 
 ################################################################################
 ## sORF prediction
 ################################################################################
-
-LENGTH = ['short', 'long']
 
 rule sORF:
     """
     Defines a target rule for sORF prediction so a user can run only sORF prediction if they desire.
     snakemake sORF --software-deployment-method conda -j 8 
     """
-    input:
+    input: "outputs/sORF/long_contigs/rnasamba/classification.tsv",
 
 rule filter_nt_contigs_to_short:
     input:
@@ -44,7 +42,7 @@ rule filter_nt_contigs_to_short:
     cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
     '''
 
-# TER TODO: Add a rule for sORF prediction, either once smallesm is developed, when there is an accurate sORF rnasamba model, or another tool from Singh & Roy.
+# TER TODO: Add a rule for sORF prediction, either once smallesm is developed, when there is an accurate sORF rnasamba model, or using another tool from Singh & Roy.
 
 rule filter_nt_contigs_to_long:
     input: all_contigs = all_contigs
@@ -87,20 +85,22 @@ rule filter_long_contigs_to_no_predicted_ORF:
 #    Place holder rule.
 #    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it. 
 #    """
-#    output: "inputs/models/rnasamba/full_length_weights.hdf"
+#    output: "inputs/models/rnasamba/eu_rnasamba.hdf5"
 #    conda: "envs/wget.yml"
 #    shell:'''
-#    wget -O {output} https://raw.githubusercontent.com/apcamargo/RNAsamba/master/data/full_length_weights.hdf
+#    wget -O {output} 
 #    '''
 
 rule rnasamba:
     """
-    RNAsamba is only accurate on longer contigs.
+    The eu_rnasamba.hdf5 model is only accurate on longer contigs.
     It assesses whether they are long noncoding RNAs.
-    LncRNAs often have sORFs that encode peptides.
+    However, lncRNAs often have sORFs that encode peptides.
+    This rule runs RNAsamba on longer contigs (>300nt) that were not predicted by transdecoder to contain ORFs.
     """
     input:
-        model = "inputs/models/rnasamba/full_length_weights.hdf",
+        # TER TODO: update path when model is downloaded
+        model = "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5" 
         contigs = "outputs/sORF/long_contigs/long_contigs.fa"
     output:
         tsv = "outputs/sORF/long_contigs/rnasamba/classification.tsv",
