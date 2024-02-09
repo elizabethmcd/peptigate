@@ -9,6 +9,7 @@ import time
 # This allows for backwards compatibility of the pickled models.
 sys.modules["protai"] = nlpprecursor
 
+
 def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     Attempts to call the predict function up to a maximum number of attempts.
@@ -40,7 +41,7 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
 
 
 def main(models_dir, multifasta_file, output_tsv):
-    models_dir = Path(models_dir)  
+    models_dir = Path(models_dir)
 
     class_model_dir = models_dir / "classification"
     class_model_path = class_model_dir / "model.p"
@@ -50,7 +51,7 @@ def main(models_dir, multifasta_file, output_tsv):
     annot_model_path = annot_model_dir / "model.p"
     annot_vocab_path = annot_model_dir / "vocab.pkl"
 
-    sequences = [] 
+    sequences = []
 
     # Read sequences from the multifasta file
     for record in SeqIO.parse(multifasta_file, "fasta"):
@@ -58,7 +59,9 @@ def main(models_dir, multifasta_file, output_tsv):
 
     # Predict class and cleavage for each sequence
     try:
-        class_predictions = robust_predict(CDG.predict, class_model_path, class_vocab_path, sequences)
+        class_predictions = robust_predict(
+            CDG.predict, class_model_path, class_vocab_path, sequences
+        )
     except Exception as final_error:
         print(f"Failed to predict class after several attempts: {final_error}")
     cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, sequences)
@@ -66,20 +69,27 @@ def main(models_dir, multifasta_file, output_tsv):
     # The output of nlpprecursor predictions are in JSON format.
     # The code below parses the json into a TSV format, which is easier for downstream tools to parse.
     with open(output_tsv, "w") as f:
-        f.write("Name\tClass\tClass Score\tCleavage Sequence\tCleavage Start\tCleavage Stop\tCleavage Score\n")
+        f.write(
+            "Name\tClass\tClass Score\tCleavage Sequence\tCleavage Start\tCleavage Stop\tCleavage Score\n"
+        )
 
         for i in range(len(sequences)):
             name = sequences[i]["name"]
             class_pred = class_predictions[i]["class_predictions"][0]
             cleavage_pred = cleavage_predictions[i]["cleavage_prediction"]
 
-            f.write(f"{name}\t{class_pred['class']}\t{class_pred['score']}\t"
-                    f"{cleavage_pred['sequence']}\t{cleavage_pred['start']}\t"
-                    f"{cleavage_pred['stop']}\t{cleavage_pred['score']}\n")
+            f.write(
+                f"{name}\t{class_pred['class']}\t{class_pred['score']}\t"
+                f"{cleavage_pred['sequence']}\t{cleavage_pred['start']}\t"
+                f"{cleavage_pred['stop']}\t{cleavage_pred['score']}\n"
+            )
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>")
+        print(
+            "Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>"
+        )
         sys.exit(1)
 
     models_dir = sys.argv[1]
