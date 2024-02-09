@@ -141,7 +141,7 @@ rule rnasamba:
         "envs/rnasamba.yml"
     shell:
         """
-    rnasamba classify -p {output.fa} {output.tsv} {input.all_contigs} {input.model}
+    rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
     """
 
 
