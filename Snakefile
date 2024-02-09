@@ -9,20 +9,29 @@
 # - orthofuser_final_clean.fa.transdecoder.pep: predicted ORFs translated into amino acids. Output by dammit with ORF prediction by transdecoder. Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
 # - orthofuser_final_clean.fa.transdecoder.cds: predicted ORFs as nucleotide sequences. Output by dammit with ORF prediction by transdecoder. Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
 # - orthofuser_final_clean.fa.dammit.fasta: all contigs as nucleotide sequences. Used to identify contigs shorter than X nucleotides (300) to scan for sORFs and to predict lncRNAs, which may have sORFs embedded in them.
- 
+
 short_contigs = config.get("short_contigs", "inputs/reads2transcriptome_outputs/small_contigs.fa")
-orfs_amino_acids = config.get("orfs_amino_acids", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.pep_head")
-orfs_nucleotides = config.get("orfs_nucleotides", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.cds")
-all_contigs = config.get("all_contigs", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta")
+orfs_amino_acids = config.get(
+    "orfs_amino_acids",
+    "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.pep",
+)
+orfs_nucleotides = config.get(
+    "orfs_nucleotides",
+    "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.cds",
+)
+all_contigs = config.get(
+    "all_contigs", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta"
+)
 
 rule all:
     input:
+        "outputs/sORF/long_contigs/rnasamba/classification.tsv",
+
 
 ################################################################################
 ## sORF prediction
 ################################################################################
 
-LENGTH = ['short', 'long']
 
 rule sORF:
     """
@@ -30,91 +39,113 @@ rule sORF:
     snakemake sORF --software-deployment-method conda -j 8 
     """
     input:
+        "outputs/sORF/long_contigs/rnasamba/classification.tsv",
+
 
 rule filter_nt_contigs_to_short:
     input:
-        all_contigs = all_contigs,
-        short_contigs = short_contigs
+        all_contigs=all_contigs,
+        short_contigs=short_contigs,
     output:
-        contigs300 = temp("outputs/sORF/short_contigs/contigs300.fa"),
-        all_short_contigs = "outputs/sORF/short_contigs/short_contigs.fa"
-    conda: "envs/seqkit.yml"
-    shell:'''
+        contigs300=temp("outputs/sORF/short_contigs/contigs300.fa"),
+        all_short_contigs="outputs/sORF/short_contigs/short_contigs.fa",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
     seqkit seq --max-len 300 -o {output.contigs300} {input.all_contigs}
     cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
-    '''
+    """
+
+
+# TER TODO: Add a rule for sORF prediction, either once smallesm is developed, when there is an accurate sORF rnasamba model, or using another tool from Singh & Roy.
+
 
 rule filter_nt_contigs_to_long:
-    input: all_contigs = all_contigs
-    output: temp("outputs/sORF/long_contigs/contigs300.fa")
-    conda: "envs/seqkit.yml"
-    shell:'''
+    input:
+        all_contigs=all_contigs,
+    output:
+        temp("outputs/sORF/long_contigs/contigs300.fa"),
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
     seqkit seq --min-len 301 -o {output} {input.all_contigs}
-    '''
+    """
+
 
 rule get_coding_contig_names:
     """
     Extract amino acid contig names and remove everything after the first period, which are isoform labels.
     This file will be used to select all contigs that DO NOT encode ORFs, according to transdecoder.
     """
-    input: orfs_amino_acids,
-    output: "outputs/sORF/long_contigs/orfs_amino_acid_names.txt"
-    conda: "envs/seqkit.yml"
-    shell:'''
+    input:
+        orfs_amino_acids,
+    output:
+        "outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
     seqkit seq -n {input} | sed 's/[.].*$//' > {output}
-    '''
+    """
 
-rule filter_long_contigs_to_noncoding:
-    '''
+
+rule filter_long_contigs_to_no_predicted_ORF:
+    """
     Many of the contigs in the full transcriptome have predicted ORFs.
     The names of these contigs are recorded in the transdecoder input files (*pep and *cds, orfs_*).
     By definition, these contigs are not noncoding RNAs, so they don't need to be considered for classification as long noncoding RNAs (lncRNA).
     This step removes the contigs that contain ORFs.
-    '''
-    input: 
-        fa = "outputs/sORF/long_contigs/contigs300.fa",
-        names = "outputs/sORF/long_contigs/orfs_amino_acid_names.txt"
-    output: "outputs/sORF/long_contigs/long_contigs.fa"
-    conda: "envs/seqkit.yml"
-    shell:'''
+    """
+    input:
+        fa="outputs/sORF/long_contigs/contigs300.fa",
+        names="outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+    output:
+        "outputs/sORF/long_contigs/long_contigs.fa",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
     seqkit grep -v -f {input.names} {input.fa} -o {output}
-    '''
+    """
+
 
 rule download_rnasamba_model:
     """
-    The RNAsamba model was trained on human but had good predictive accuracy for distantly related model organisms.
-    Accuracy did drop for drosophila and zebrafish, however the authors suggest that this might be due to inaccuracies in annotations in these two species.
-    While they don't investigate further, I find their claim convincing.
-    This reinforced to me that the quality of the training data is more important than the species it originates from.
-    Strong performance in C. elegans and Arabadopsis also suggests that the human model is sufficient for diverse organisms.
+    Place holder rule.
+    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
     """
-    output: "inputs/models/rnasamba/full_length_weights.hdf"
-    conda: "envs/wget.yml"
-    shell:'''
-    wget -O {output} https://raw.githubusercontent.com/apcamargo/RNAsamba/master/data/full_length_weights.hdf
-    '''
+    output:
+        "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+    shell:
+        """
+    curl -JLo {output} # TODO add URL for download
+    """
+
 
 rule rnasamba:
     """
-    RNAsamba will run on both the short and long contigs.
-    For short contigs, it assess their coding potential.
-    Short contigs that have coding potential may encode peptides.
-    For long contigs, it assesses whether they are long noncoding RNAs.
-    LncRNAs often have sORFs that encode peptides.
+    The eu_rnasamba.hdf5 model is only accurate on longer contigs.
+    It assesses whether they are long noncoding RNAs.
+    However, lncRNAs often have sORFs that encode peptides.
+    This rule runs RNAsamba on longer contigs (>300nt) that were not predicted by transdecoder to contain ORFs.
     """
     input:
-        model = "inputs/models/rnasamba/full_length_weights.hdf",
-        contigs = "outputs/sORF/{length}_contigs/{length}_contigs.fa"
+        # TER TODO: update path when model is downloaded
+        model="outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        contigs="outputs/sORF/long_contigs/long_contigs.fa",
     output:
-        tsv = "outputs/sORF/{length}_contigs/rnasamba/classification.tsv",
-        fa  = "outputs/sORF/{length}_contigs/rnasamba/predicted_proteins.fa"
-    # TODO: update rnasamba installation according to tests
-    conda: "envs/rnasamba.yml"
-    shell:'''
-    rnasamba classify -p {output.fa} {output.tsv} {input.all_contigs} {input.model}
-    '''
+        tsv="outputs/sORF/long_contigs/rnasamba/classification.tsv",
+        fa="outputs/sORF/long_contigs/rnasamba/predicted_proteins.fa",
+    conda:
+        "envs/rnasamba.yml"
+    shell:
+        """
+    rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
+    """
 
-## TODO: predict sORFs from lncRNAs
+## TER TODO: predict sORFs from lncRNAs
 
 ################################################################################
 ## cleavage prediction
