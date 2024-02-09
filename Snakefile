@@ -148,3 +148,9 @@ rule rnasamba:
 
 
 ## TER TODO: predict sORFs from lncRNAs
+
+################################################################################
+## Non-ribosomal peptide synthetase annotation
+################################################################################
+
+rule 
