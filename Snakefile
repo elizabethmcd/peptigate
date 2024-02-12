@@ -17,9 +17,6 @@ orfs_amino_acids = Path(config["orfs_amino_acids"])
 orfs_nucleotides = Path(config["orfs_nucleotides"])
 all_contigs = Path(config["all_contigs"])
 
-rule all:
-    input:
-        "outputs/sORF/long_contigs/rnasamba/classification.tsv",
 
 
 ################################################################################
@@ -141,3 +138,13 @@ rule rnasamba:
 
 
 ## TER TODO: predict sORFs from lncRNAs
+
+
+################################################################################
+## Target rule all 
+################################################################################
+
+rule all:
+    default_target: True
+    input:
+        rules.rnasamba.output.tsv
