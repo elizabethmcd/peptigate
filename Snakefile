@@ -135,22 +135,11 @@ rule rnasamba:
 ## cleavage prediction
 ################################################################################
 
-
-rule cleavage:
-    """
-    Defines a target rule for cleavage prediction so a user can run only cleavage prediction if they desire.
-    snakemake cleavage --software-deployment-method conda -j 8 
-    """
-    input:
-        "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
-        "outputs/cleavage/deeppeptide/peptides.faa",
-
-
 rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input:
-        orfs_amino_acids,
+        ORFS_AMINO_ACIDS,
     output:
-        "outputs/cleavage/preprocessing/noasterisk.faa",
+        faa = OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
     shell:
         """
     sed '/^[^>]/s/\*//g' {input} > {output}
@@ -162,10 +151,10 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
 
 rule download_nlpprecursor_models:
     output:
-        tar="inputs/models/nlpprecursor/nlpprecursor_models.tar.gz",
-        model="inputs/models/nlpprecursor/models/annotation/model.p",
+        tar=INPUT_DIR / "models/nlpprecursor/nlpprecursor_models.tar.gz",
+        model=INPUT_DIR / "models/nlpprecursor/models/annotation/model.p",
     params:
-        outdir="inputs/models/nlpprecursor",
+        outdir=INPUT_DIR / "models/nlpprecursor",
     shell:
         """
     curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
@@ -183,12 +172,12 @@ rule nlpprecursor:
     A total of 14 classes are identified (n_class)."
     """
     input:
-        faa="outputs/cleavage/preprocessing/noasterisk.faa",
-        model="inputs/models/nlpprecursor/models/annotation/model.p",
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        model = rules.download_nlpprecursor_models.output.model
     output:
-        "outputs/cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+        tsv = OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
     params:
-        modelsdir="inputs/models/nlpprecursor/models/",
+        modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
@@ -199,10 +188,9 @@ rule nlpprecursor:
 
 # General Cleavage peptide prediction
 
-
 rule clone_deeppeptide:
     output:
-        "cloned_repositories/DeepPeptide/LICENSE",
+        src="cloned_repositories/DeepPeptide/LICENSE",
     shell:
         """
     cd cloned_repositories
@@ -212,18 +200,19 @@ rule clone_deeppeptide:
 
 rule deeppeptide:
     input:
-        src="cloned_repositories/DeepPeptide/LICENSE",
-        faa="outputs/cleavage/preprocessing/noasterisk.faa",
+        src=rules.clone_deeppeptide.output.src,
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
     output:
-        "outputs/cleavage/deeppeptide/peptide_predictions.json",
+        json=OUTPUT_DIR / "cleavage/deeppeptide/peptide_predictions.json",
     conda:
         "envs/deeppeptide.yml"
     params:
-        outdir="outputs/cleavage/deeppeptide/",
+        outdir1=OUTPUT_DIR / "cleavage/deeppeptide/",
+        outdir2=OUTPUT_DIR / "cleavage/"
     shell:
         """
-    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir} --output_fmt json
-    mv outputs/cleavage/deeppeptide/ ../../../outputs/cleavage/
+    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
+    mv {params.outdir1} ../../../{params.outdir2}
     """
 
 
@@ -234,11 +223,11 @@ rule extract_deeppeptide_sequences:
     It outputs the propeptide (full ORF, uncleaved) as well as the predicted peptide sequence (cleaved) in FASTA format.
     """
     input:
-        faa="outputs/cleavage/preprocessing/noasterisk.faa",
-        json="outputs/cleavage/deeppeptide/peptide_predictions.json",
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        json=rules.deeppeptide.output.json
     output:
-        propeptide="outputs/cleavage/deeppeptide/propeptides.faa",
-        peptide="outputs/cleavage/deeppeptide/peptides.faa",
+        propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
+        peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
     conda:
         "envs/deeppeptide.yml"
     shell:
@@ -255,6 +244,8 @@ rule all:
     default_target: True
     input:
         rules.rnasamba.output.tsv,
+        rules.nlpprecursor.output.tsv,
+        rules.extract_deeppeptide_sequences.output.peptide
 
 
 rule sORF:
@@ -264,3 +255,13 @@ rule sORF:
     """
     input:
         rules.rnasamba.output.tsv,
+
+
+rule cleavage:
+    """
+    Defines a target rule for cleavage prediction so a user can run only cleavage prediction if they desire.
+    snakemake cleavage --software-deployment-method conda -j 8 
+    """
+    input:
+        rules.nlpprecursor.output.tsv,
+        rules.extract_deeppeptide_sequences.output.peptide
