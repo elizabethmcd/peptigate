@@ -1,32 +1,23 @@
+import os
+from pathlib import Path
+
 ################################################################################
-## Input file descriptions
+## Configuration
 ################################################################################
 
-# All input files are produced by reads2transcriptome.
-# While this is not a strict requirement, using these output files gives us the ability to look at very short contiguous sequences.
-# TER TODO: update names of output files based on Nextflow of reads2transcriptome.
-# - small_contigs.fa: contigs that are shorter than X nucleotides, which do not progress through the assembly pipeline. These may contain sORFs and so are included.
-# - orthofuser_final_clean.fa.transdecoder.pep: predicted ORFs translated into amino acids. Output by dammit with ORF prediction by transdecoder. Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
-# - orthofuser_final_clean.fa.transdecoder.cds: predicted ORFs as nucleotide sequences. Output by dammit with ORF prediction by transdecoder. Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
-# - orthofuser_final_clean.fa.dammit.fasta: all contigs as nucleotide sequences. Used to identify contigs shorter than X nucleotides (300) to scan for sORFs and to predict lncRNAs, which may have sORFs embedded in them.
 
-short_contigs = config.get("short_contigs", "inputs/reads2transcriptome_outputs/small_contigs.fa")
-orfs_amino_acids = config.get(
-    "orfs_amino_acids",
-    "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.pep",
-)
-orfs_nucleotides = config.get(
-    "orfs_nucleotides",
-    "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.cds",
-)
-all_contigs = config.get(
-    "all_contigs", "inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta"
-)
+# Default pipeline configuration parameters are in the config file.
+# If you create a new yml file and use the --configfile flag, options in that new file overwrite the defaults.
+configfile: "./config.yml"
 
 
-rule all:
-    input:
-        "outputs/sORF/long_contigs/rnasamba/classification.tsv",
+INPUT_DIR = Path(config["input_dir"])
+OUTPUT_DIR = Path(config["output_dir"])
+
+SHORT_CONTIGS = Path(config["short_contigs"])
+ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
+ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
+ALL_CONTIGS = Path(config["all_contigs"])
 
 
 ################################################################################
@@ -34,22 +25,13 @@ rule all:
 ################################################################################
 
 
-rule sORF:
-    """
-    Defines a target rule for sORF prediction so a user can run only sORF prediction if they desire.
-    snakemake sORF --software-deployment-method conda -j 8 
-    """
-    input:
-        "outputs/sORF/long_contigs/rnasamba/classification.tsv",
-
-
 rule filter_nt_contigs_to_short:
     input:
-        all_contigs=all_contigs,
-        short_contigs=short_contigs,
+        all_contigs=ALL_CONTIGS,
+        short_contigs=SHORT_CONTIGS,
     output:
-        contigs300=temp("outputs/sORF/short_contigs/contigs300.fa"),
-        all_short_contigs="outputs/sORF/short_contigs/short_contigs.fa",
+        contigs300=temp(OUTPUT_DIR / "outputs/sORF/short_contigs/contigs300.fa"),
+        all_short_contigs=OUTPUT_DIR / "sORF/short_contigs/short_contigs.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -64,14 +46,14 @@ rule filter_nt_contigs_to_short:
 
 rule filter_nt_contigs_to_long:
     input:
-        all_contigs=all_contigs,
+        all_contigs=ALL_CONTIGS,
     output:
-        temp("outputs/sORF/long_contigs/contigs300.fa"),
+        long_contigs=temp(OUTPUT_DIR / "sORF/long_contigs/contigs300.fa"),
     conda:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit seq --min-len 301 -o {output} {input.all_contigs}
+    seqkit seq --min-len 301 -o {output.long_contigs} {input.all_contigs}
     """
 
 
@@ -81,9 +63,9 @@ rule get_coding_contig_names:
     This file will be used to select all contigs that DO NOT encode ORFs, according to transdecoder.
     """
     input:
-        orfs_amino_acids,
+        ORFS_AMINO_ACIDS,
     output:
-        "outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+        names=OUTPUT_DIR / "sORF/long_contigs/orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -100,15 +82,15 @@ rule filter_long_contigs_to_no_predicted_ORF:
     This step removes the contigs that contain ORFs.
     """
     input:
-        fa="outputs/sORF/long_contigs/contigs300.fa",
-        names="outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+        fa=rules.filter_nt_contigs_to_long.output.long_contigs,
+        names=rules.get_coding_contig_names.output.names,
     output:
-        "outputs/sORF/long_contigs/long_contigs.fa",
+        fa=OUTPUT_DIR / "sORF/long_contigs/long_contigs_no_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit grep -v -f {input.names} {input.fa} -o {output}
+    seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
     """
 
 
@@ -118,10 +100,10 @@ rule download_rnasamba_model:
     For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
     """
     output:
-        "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        model=OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
     shell:
         """
-    curl -JLo {output} # TODO add URL for download
+    curl -JLo {output.model} # TODO add URL for download
     """
 
 
@@ -134,11 +116,11 @@ rule rnasamba:
     """
     input:
         # TER TODO: update path when model is downloaded
-        model="outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
-        contigs="outputs/sORF/long_contigs/long_contigs.fa",
+        model=rules.download_rnasamba_model.output.model,
+        contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa,
     output:
-        tsv="outputs/sORF/long_contigs/rnasamba/classification.tsv",
-        fa="outputs/sORF/long_contigs/rnasamba/predicted_proteins.fa",
+        tsv=OUTPUT_DIR / "sORF/long_contigs/rnasamba/classification.tsv",
+        fa=OUTPUT_DIR / "sORF/long_contigs/rnasamba/predicted_proteins.fa",
     conda:
         "envs/rnasamba.yml"
     shell:
@@ -149,8 +131,154 @@ rule rnasamba:
 
 ## TER TODO: predict sORFs from lncRNAs
 
+
+################################################################################
+## cleavage prediction
+################################################################################
+
+
+rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
+    input:
+        ORFS_AMINO_ACIDS,
+    output:
+        faa=OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
+    shell:
+        """
+    sed '/^[^>]/s/\*//g' {input} > {output}
+    """
+
+
+# Ribosomally synthesized and post-translationally modified peptide prediction
+
+
+rule download_nlpprecursor_models:
+    output:
+        tar=INPUT_DIR / "models/nlpprecursor/nlpprecursor_models.tar.gz",
+        model=INPUT_DIR / "models/nlpprecursor/models/annotation/model.p",
+    params:
+        outdir=INPUT_DIR / "models/nlpprecursor",
+    shell:
+        """
+    curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
+    tar xf {output.tar} -C {params.outdir} 
+    """
+
+
+rule nlpprecursor:
+    """
+    The nlpprecursor tool is part of the [DeepRiPP approach](https://doi.org/10.1073/pnas.1901493116) that predicts ribosomally synthesized postranslationally modified peptides, a subclass of cleavage peptides.
+    Unlike many tools in the RiPP prediction space, "NLPPrecursor identifies RiPPs independent of genomic context and neighboring biosynthetic genes."
+    Note the paper suggests, "the precursor cleavage algorithm predicted N-terminal cleavage sites with 90% accuracy, when considering cleavage points ±5 amino acids from the true prediction site, a range within which all possible complete chemical structures can be elaborated in silico by combinatorial structure prediction."    
+    From the DeepRiPP paper supplement: "Protein sequences of open reading frames are used as input.
+    The output of the model consists of a classification of each ORF as either a precursor peptide (further subclassified according to RiPP family), or a non-precursor peptide. 
+    A total of 14 classes are identified (n_class)."
+    """
+    input:
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        model=rules.download_nlpprecursor_models.output.model,
+    output:
+        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+    params:
+        modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
+    conda:
+        "envs/nlpprecursor.yml"
+    shell:
+        """
+    python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
+    """
+
+
+# General Cleavage peptide prediction
+
+
+rule clone_deeppeptide:
+    output:
+        src="cloned_repositories/DeepPeptide/LICENSE",
+    shell:
+        """
+    cd cloned_repositories
+    git clone https://github.com/fteufel/DeepPeptide.git
+    """
+
+
+rule deeppeptide:
+    input:
+        src=rules.clone_deeppeptide.output.src,
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+    output:
+        json=OUTPUT_DIR / "cleavage/deeppeptide/peptide_predictions.json",
+    conda:
+        "envs/deeppeptide.yml"
+    params:
+        outdir1=OUTPUT_DIR / "cleavage/deeppeptide/",
+        outdir2=OUTPUT_DIR / "cleavage/",
+    shell:
+        """
+    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
+    mv {params.outdir1} ../../../{params.outdir2}
+    """
+
+
+rule extract_deeppeptide_sequences:
+    """
+    DeepPeptide outputs a json file of peptide predictions and locations, but does not output the sequences themselves.
+    This step parses the JSON file and the protein FASTA from which peptides were predicted.
+    It outputs the propeptide (full ORF, uncleaved) as well as the predicted peptide sequence (cleaved) in FASTA format.
+    """
+    input:
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        json=rules.deeppeptide.output.json,
+    output:
+        propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
+        peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
+    conda:
+        "envs/deeppeptide.yml"
+    shell:
+        """
+    python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
+    """
+
+
 ################################################################################
 ## Non-ribosomal peptide synthetase annotation
 ################################################################################
 
 rule 
+
+################################################################################
+## Target rule all
+################################################################################
+
+
+rule all:
+    default_target: True
+    input:
+        rules.rnasamba.output.tsv,
+        rules.nlpprecursor.output.tsv,
+        rules.extract_deeppeptide_sequences.output.peptide,
+
+
+rule sORF:
+    """
+    Defines a target rule for sORF prediction so a user can run only sORF prediction if they desire.
+    snakemake sORF --software-deployment-method conda -j 8 
+    """
+    input:
+        rules.rnasamba.output.tsv,
+
+
+rule cleavage:
+    """
+    Defines a target rule for cleavage prediction so a user can run only cleavage prediction if they desire.
+    snakemake cleavage --software-deployment-method conda -j 8 
+    """
+    input:
+        rules.nlpprecursor.output.tsv,
+        rules.extract_deeppeptide_sequences.output.peptide,
+
+
+rule nrps:
+    """
+    Defines a target rule for nonribosomal peptide synthetase prediction so a user can run only NRPS prediction if they desire.
+    snakemake nrps --software-deployment-method conda -j 8 
+    """
