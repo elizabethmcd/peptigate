@@ -143,8 +143,8 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
         faa=OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
     shell:
         """
-    sed '/^[^>]/s/\*//g' {input} > {output}
-    """
+        sed '/^[^>]/s/\*//g' {input} > {output}
+        """
 
 
 # Ribosomally synthesized and post-translationally modified peptide prediction
@@ -158,9 +158,9 @@ rule download_nlpprecursor_models:
         outdir=INPUT_DIR / "models/nlpprecursor",
     shell:
         """
-    curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
-    tar xf {output.tar} -C {params.outdir} 
-    """
+        curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
+        tar xf {output.tar} -C {params.outdir} 
+        """
 
 
 rule nlpprecursor:
@@ -183,8 +183,8 @@ rule nlpprecursor:
         "envs/nlpprecursor.yml"
     shell:
         """
-    python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
-    """
+        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
+        """
 
 
 # General Cleavage peptide prediction
@@ -195,9 +195,10 @@ rule clone_deeppeptide:
         src="cloned_repositories/DeepPeptide/LICENSE",
     shell:
         """
-    cd cloned_repositories
-    git clone https://github.com/fteufel/DeepPeptide.git
-    """
+        cd cloned_repositories
+        git clone https://github.com/fteufel/DeepPeptide.git
+        git checkout 2657f5dca38e6417c65da5913c1974ed932746e3
+        """
 
 
 rule deeppeptide:
@@ -213,9 +214,9 @@ rule deeppeptide:
         outdir2=OUTPUT_DIR / "cleavage/",
     shell:
         """
-    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
-    mv {params.outdir1} ../../../{params.outdir2}
-    """
+        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
+        mv {params.outdir1} ../../../{params.outdir2}
+        """
 
 
 rule extract_deeppeptide_sequences:
@@ -234,8 +235,8 @@ rule extract_deeppeptide_sequences:
         "envs/deeppeptide.yml"
     shell:
         """
-    python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
-    """
+        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
+        """
 
 
 ################################################################################
