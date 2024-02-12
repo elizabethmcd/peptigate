@@ -243,20 +243,28 @@ rule extract_deeppeptide_sequences:
 ## Non-ribosomal peptide synthetase annotation
 ################################################################################
 
-rule 
 
 rule nrps_hmmsearch:
-    input: faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+    """
+    Uses hidden markov models to search for domains that are commonly annotated in NRPS genes.
+    The input.hmm file is produced by download_nrps_hmm_profiles.snakefile and included in this repo. 
+    """
+    input:
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        hmm=INPUT_DIR / "nrps/nrps.hmm",
     output:
-        txt = OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.txt",
-        tbltsv = OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.tbltsv",
-        domtsv = OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.domtsv",
-    conda: "envs/hmmer.yml"
+        txt=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.txt",
+        tbltsv=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.tbltsv",
+        domtsv=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.domtsv",
+    conda:
+        "envs/hmmer.yml"
     threads: 4
     shell:
         """
-        hmmsearch -o {output.txt} --tblout {output.tbltsv} --domtblout {output.domtsv} --cpu {threads} {input} 
+        hmmsearch -o {output.txt} --tblout {output.tbltsv} --domtblout {output.domtsv} --cpu {threads} {input.hmm} {input.faa} 
         """
+
+
 ################################################################################
 ## Target rule all
 ################################################################################
@@ -268,6 +276,7 @@ rule all:
         rules.rnasamba.output.tsv,
         rules.nlpprecursor.output.tsv,
         rules.extract_deeppeptide_sequences.output.peptide,
+        rules.nrps_hmmsearch.output.tbltsv,
 
 
 rule sORF:
@@ -295,4 +304,4 @@ rule nrps:
     snakemake nrps --software-deployment-method conda -j 8 
     """
     input:
-        rules.nrps_hmmsearch.output.tbltsv
+        rules.nrps_hmmsearch.output.tbltsv,
