@@ -5,9 +5,11 @@ from pathlib import Path
 ## Configuration
 ################################################################################
 
+
 # Default pipeline configuration parameters are in the config file.
 # If you create a new yml file and use the --configfile flag, options in that new file overwrite the defaults.
 configfile: "./config.yml"
+
 
 INPUT_DIR = Path(config["input_dir"])
 OUTPUT_DIR = Path(config["output_dir"])
@@ -21,6 +23,7 @@ ALL_CONTIGS = Path(config["all_contigs"])
 ################################################################################
 ## sORF prediction
 ################################################################################
+
 
 rule filter_nt_contigs_to_short:
     input:
@@ -62,7 +65,7 @@ rule get_coding_contig_names:
     input:
         ORFS_AMINO_ACIDS,
     output:
-        names = OUTPUT_DIR / "sORF/long_contigs/orfs_amino_acid_names.txt",
+        names=OUTPUT_DIR / "sORF/long_contigs/orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -79,10 +82,10 @@ rule filter_long_contigs_to_no_predicted_ORF:
     This step removes the contigs that contain ORFs.
     """
     input:
-        fa = rules.filter_nt_contigs_to_long.output.long_contigs, 
-        names = rules.get_coding_contig_names.output.names
+        fa=rules.filter_nt_contigs_to_long.output.long_contigs,
+        names=rules.get_coding_contig_names.output.names,
     output:
-        fa = OUTPUT_DIR / "sORF/long_contigs/long_contigs_no_predicted_orf.fa",
+        fa=OUTPUT_DIR / "sORF/long_contigs/long_contigs_no_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -97,7 +100,7 @@ rule download_rnasamba_model:
     For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
     """
     output:
-        model = OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        model=OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
     shell:
         """
     curl -JLo {output.model} # TODO add URL for download
@@ -114,7 +117,7 @@ rule rnasamba:
     input:
         # TER TODO: update path when model is downloaded
         model=rules.download_rnasamba_model.output.model,
-        contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa
+        contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa,
     output:
         tsv=OUTPUT_DIR / "sORF/long_contigs/rnasamba/classification.tsv",
         fa=OUTPUT_DIR / "sORF/long_contigs/rnasamba/predicted_proteins.fa",
@@ -130,13 +133,14 @@ rule rnasamba:
 
 
 ################################################################################
-## Target rule all 
+## Target rule all
 ################################################################################
+
 
 rule all:
     default_target: True
     input:
-        rules.rnasamba.output.tsv
+        rules.rnasamba.output.tsv,
 
 
 rule sORF:
@@ -145,4 +149,4 @@ rule sORF:
     snakemake sORF --software-deployment-method conda -j 8 
     """
     input:
-        rules.rnasamba.output.tsv
+        rules.rnasamba.output.tsv,
