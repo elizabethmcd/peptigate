@@ -9,37 +9,26 @@ from pathlib import Path
 # If you create a new yml file and use the --configfile flag, options in that new file overwrite the defaults.
 configfile: "./config.yml"
 
-input_dir = Path(config["input_dir"])
-output_dir = Path(config["output_dir"])
+INPUT_DIR = Path(config["input_dir"])
+OUTPUT_DIR = Path(config["output_dir"])
 
-short_contigs = Path(config["short_contigs"])
-orfs_amino_acids = Path(config["orfs_amino_acids"])
-orfs_nucleotides = Path(config["orfs_nucleotides"])
-all_contigs = Path(config["all_contigs"])
-
+SHORT_CONTIGS = Path(config["short_contigs"])
+ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
+ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
+ALL_CONTIGS = Path(config["all_contigs"])
 
 
 ################################################################################
 ## sORF prediction
 ################################################################################
 
-
-rule sORF:
-    """
-    Defines a target rule for sORF prediction so a user can run only sORF prediction if they desire.
-    snakemake sORF --software-deployment-method conda -j 8 
-    """
-    input:
-        rnasamba="outputs/sORF/long_contigs/rnasamba/classification.tsv",
-
-
 rule filter_nt_contigs_to_short:
     input:
-        all_contigs=all_contigs,
-        short_contigs=short_contigs,
+        all_contigs=ALL_CONTIGS,
+        short_contigs=SHORT_CONTIGS,
     output:
-        contigs300=temp("outputs/sORF/short_contigs/contigs300.fa"),
-        all_short_contigs="outputs/sORF/short_contigs/short_contigs.fa",
+        contigs300=temp(OUTPUT_DIR / "outputs/sORF/short_contigs/contigs300.fa"),
+        all_short_contigs=OUTPUT_DIR / "sORF/short_contigs/short_contigs.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -54,14 +43,14 @@ rule filter_nt_contigs_to_short:
 
 rule filter_nt_contigs_to_long:
     input:
-        all_contigs=all_contigs,
+        all_contigs=ALL_CONTIGS,
     output:
-        long_contigs=temp("outputs/sORF/long_contigs/contigs300.fa"),
+        long_contigs=temp(OUTPUT_DIR / "sORF/long_contigs/contigs300.fa"),
     conda:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit seq --min-len 301 -o {output} {input.all_contigs}
+    seqkit seq --min-len 301 -o {output.long_contigs} {input.all_contigs}
     """
 
 
@@ -71,9 +60,9 @@ rule get_coding_contig_names:
     This file will be used to select all contigs that DO NOT encode ORFs, according to transdecoder.
     """
     input:
-        orfs_amino_acids,
+        ORFS_AMINO_ACIDS,
     output:
-        names = "outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+        names = OUTPUT_DIR / "sORF/long_contigs/orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -93,7 +82,7 @@ rule filter_long_contigs_to_no_predicted_ORF:
         fa = rules.filter_nt_contigs_to_long.output.long_contigs, 
         names = rules.get_coding_contig_names.output.names
     output:
-        fa = "outputs/sORF/long_contigs/long_contigs_no_predicted_orf.fa",
+        fa = OUTPUT_DIR / "sORF/long_contigs/long_contigs_no_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -108,7 +97,7 @@ rule download_rnasamba_model:
     For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
     """
     output:
-        model = "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        model = OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
     shell:
         """
     curl -JLo {output.model} # TODO add URL for download
@@ -127,8 +116,8 @@ rule rnasamba:
         model=rules.download_rnasamba_model.output.model,
         contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa
     output:
-        tsv="outputs/sORF/long_contigs/rnasamba/classification.tsv",
-        fa="outputs/sORF/long_contigs/rnasamba/predicted_proteins.fa",
+        tsv=OUTPUT_DIR / "sORF/long_contigs/rnasamba/classification.tsv",
+        fa=OUTPUT_DIR / "sORF/long_contigs/rnasamba/predicted_proteins.fa",
     conda:
         "envs/rnasamba.yml"
     shell:
@@ -146,5 +135,14 @@ rule rnasamba:
 
 rule all:
     default_target: True
+    input:
+        rules.rnasamba.output.tsv
+
+
+rule sORF:
+    """
+    Defines a target rule for sORF prediction so a user can run only sORF prediction if they desire.
+    snakemake sORF --software-deployment-method conda -j 8 
+    """
     input:
         rules.rnasamba.output.tsv
