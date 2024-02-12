@@ -135,11 +135,12 @@ rule rnasamba:
 ## cleavage prediction
 ################################################################################
 
+
 rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input:
         ORFS_AMINO_ACIDS,
     output:
-        faa = OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
+        faa=OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
     shell:
         """
     sed '/^[^>]/s/\*//g' {input} > {output}
@@ -173,9 +174,9 @@ rule nlpprecursor:
     """
     input:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
-        model = rules.download_nlpprecursor_models.output.model
+        model=rules.download_nlpprecursor_models.output.model,
     output:
-        tsv = OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
     params:
         modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
     conda:
@@ -187,6 +188,7 @@ rule nlpprecursor:
 
 
 # General Cleavage peptide prediction
+
 
 rule clone_deeppeptide:
     output:
@@ -208,7 +210,7 @@ rule deeppeptide:
         "envs/deeppeptide.yml"
     params:
         outdir1=OUTPUT_DIR / "cleavage/deeppeptide/",
-        outdir2=OUTPUT_DIR / "cleavage/"
+        outdir2=OUTPUT_DIR / "cleavage/",
     shell:
         """
     cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
@@ -224,7 +226,7 @@ rule extract_deeppeptide_sequences:
     """
     input:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
-        json=rules.deeppeptide.output.json
+        json=rules.deeppeptide.output.json,
     output:
         propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
         peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
@@ -234,6 +236,7 @@ rule extract_deeppeptide_sequences:
         """
     python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
     """
+
 
 ################################################################################
 ## Target rule all
@@ -245,7 +248,7 @@ rule all:
     input:
         rules.rnasamba.output.tsv,
         rules.nlpprecursor.output.tsv,
-        rules.extract_deeppeptide_sequences.output.peptide
+        rules.extract_deeppeptide_sequences.output.peptide,
 
 
 rule sORF:
@@ -264,4 +267,4 @@ rule cleavage:
     """
     input:
         rules.nlpprecursor.output.tsv,
-        rules.extract_deeppeptide_sequences.output.peptide
+        rules.extract_deeppeptide_sequences.output.peptide,
