@@ -33,7 +33,7 @@ rule sORF:
     snakemake sORF --software-deployment-method conda -j 8 
     """
     input:
-        "outputs/sORF/long_contigs/rnasamba/classification.tsv",
+        rnasamba="outputs/sORF/long_contigs/rnasamba/classification.tsv",
 
 
 rule filter_nt_contigs_to_short:
@@ -59,7 +59,7 @@ rule filter_nt_contigs_to_long:
     input:
         all_contigs=all_contigs,
     output:
-        temp("outputs/sORF/long_contigs/contigs300.fa"),
+        long_contigs=temp("outputs/sORF/long_contigs/contigs300.fa"),
     conda:
         "envs/seqkit.yml"
     shell:
@@ -76,7 +76,7 @@ rule get_coding_contig_names:
     input:
         orfs_amino_acids,
     output:
-        "outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+        names = "outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -93,15 +93,15 @@ rule filter_long_contigs_to_no_predicted_ORF:
     This step removes the contigs that contain ORFs.
     """
     input:
-        fa="outputs/sORF/long_contigs/contigs300.fa",
-        names="outputs/sORF/long_contigs/orfs_amino_acid_names.txt",
+        fa = rules.filter_nt_contigs_to_long.output.long_contigs, 
+        names = rules.get_coding_contig_names.output.names
     output:
-        "outputs/sORF/long_contigs/long_contigs.fa",
+        fa = "outputs/sORF/long_contigs/long_contigs_no_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit grep -v -f {input.names} {input.fa} -o {output}
+    seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
     """
 
 
@@ -111,10 +111,10 @@ rule download_rnasamba_model:
     For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
     """
     output:
-        "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        model = "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
     shell:
         """
-    curl -JLo {output} # TODO add URL for download
+    curl -JLo {output.model} # TODO add URL for download
     """
 
 
@@ -127,8 +127,8 @@ rule rnasamba:
     """
     input:
         # TER TODO: update path when model is downloaded
-        model="outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
-        contigs="outputs/sORF/long_contigs/long_contigs.fa",
+        model=rules.download_rnasamba_model.output.model,
+        contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa
     output:
         tsv="outputs/sORF/long_contigs/rnasamba/classification.tsv",
         fa="outputs/sORF/long_contigs/rnasamba/predicted_proteins.fa",
