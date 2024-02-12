@@ -36,9 +36,9 @@ rule filter_nt_contigs_to_short:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit seq --max-len 300 -o {output.contigs300} {input.all_contigs}
-    cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
-    """
+        seqkit seq --max-len 300 -o {output.contigs300} {input.all_contigs}
+        cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
+        """
 
 
 # TER TODO: Add a rule for sORF prediction, either once smallesm is developed, when there is an accurate sORF rnasamba model, or using another tool from Singh & Roy.
@@ -53,8 +53,8 @@ rule filter_nt_contigs_to_long:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit seq --min-len 301 -o {output.long_contigs} {input.all_contigs}
-    """
+        seqkit seq --min-len 301 -o {output.long_contigs} {input.all_contigs}
+        """
 
 
 rule get_coding_contig_names:
@@ -70,8 +70,8 @@ rule get_coding_contig_names:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit seq -n {input} | sed 's/[.].*$//' > {output}
-    """
+        seqkit seq -n {input} | sed 's/[.].*$//' > {output}
+        """
 
 
 rule filter_long_contigs_to_no_predicted_ORF:
@@ -90,8 +90,8 @@ rule filter_long_contigs_to_no_predicted_ORF:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
-    """
+        seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
+        """
 
 
 rule download_rnasamba_model:
@@ -103,8 +103,8 @@ rule download_rnasamba_model:
         model=OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
     shell:
         """
-    curl -JLo {output.model} # TODO add URL for download
-    """
+        curl -JLo {output.model} # TODO add URL for download
+        """
 
 
 rule rnasamba:
@@ -125,8 +125,8 @@ rule rnasamba:
         "envs/rnasamba.yml"
     shell:
         """
-    rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
-    """
+        rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
+        """
 
 
 ## TER TODO: predict sORFs from lncRNAs
@@ -144,8 +144,8 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
         faa=OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
     shell:
         """
-    sed '/^[^>]/s/\*//g' {input} > {output}
-    """
+        sed '/^[^>]/s/\*//g' {input} > {output}
+        """
 
 
 # Ribosomally synthesized and post-translationally modified peptide prediction
@@ -159,9 +159,9 @@ rule download_nlpprecursor_models:
         outdir=INPUT_DIR / "models/nlpprecursor",
     shell:
         """
-    curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
-    tar xf {output.tar} -C {params.outdir} 
-    """
+        curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
+        tar xf {output.tar} -C {params.outdir} 
+        """
 
 
 rule nlpprecursor:
@@ -184,8 +184,8 @@ rule nlpprecursor:
         "envs/nlpprecursor.yml"
     shell:
         """
-    python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
-    """
+        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
+        """
 
 
 # General Cleavage peptide prediction
@@ -196,9 +196,10 @@ rule clone_deeppeptide:
         src="cloned_repositories/DeepPeptide/LICENSE",
     shell:
         """
-    cd cloned_repositories
-    git clone https://github.com/fteufel/DeepPeptide.git
-    """
+        cd cloned_repositories
+        git clone https://github.com/fteufel/DeepPeptide.git
+        git checkout 2657f5dca38e6417c65da5913c1974ed932746e3
+        """
 
 
 rule deeppeptide:
@@ -214,9 +215,9 @@ rule deeppeptide:
         outdir2=OUTPUT_DIR / "cleavage/",
     shell:
         """
-    cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
-    mv {params.outdir1} ../../../{params.outdir2}
-    """
+        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
+        mv {params.outdir1} ../../../{params.outdir2}
+        """
 
 
 rule extract_deeppeptide_sequences:
@@ -235,8 +236,8 @@ rule extract_deeppeptide_sequences:
         "envs/deeppeptide.yml"
     shell:
         """
-    python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
-    """
+        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
+        """
 
 
 ################################################################################
