@@ -61,8 +61,8 @@ rule extract_protein_coding_orfs_from_cdna:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit grep --use-regexp --by-name --pattern "transcript_biotype:protein_coding" -o {output} {input}
-    """
+        seqkit grep --use-regexp --by-name --pattern "transcript_biotype:protein_coding" -o {output} {input}
+        """
 
 
 rule download_validation_data:
@@ -70,8 +70,8 @@ rule download_validation_data:
         "inputs/validation/rnachallenge/{validation_type}.fa.gz",
     shell:
         """
-    curl -JL https://raw.githubusercontent.com/cbl-nabi/RNAChallenge/main/RNAchallenge/{wildcards.validation_type}.fa | gzip > {output}
-    """
+        curl -JL https://raw.githubusercontent.com/cbl-nabi/RNAChallenge/main/RNAchallenge/{wildcards.validation_type}.fa | gzip > {output}
+        """
 
 
 rule combine_sequences:
@@ -86,8 +86,8 @@ rule combine_sequences:
         "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.gz",
     shell:
         """
-    cat {input} > {output}
-    """
+        cat {input} > {output}
+        """
 
 
 rule reduce_sequence_homology:
@@ -105,8 +105,8 @@ rule reduce_sequence_homology:
         "envs/mmseqs2.yml"
     shell:
         """
-    mmseqs easy-cluster {input} {params.prefix} tmp_mmseqs2 --min-seq-id 0.8 --cov-mode 1 --cluster-mode 2
-    """
+        mmseqs easy-cluster {input} {params.prefix} tmp_mmseqs2 --min-seq-id 0.8 --cov-mode 1 --cluster-mode 2
+        """
 
 
 rule grab_validation_set_names_and_lengths:
@@ -119,9 +119,9 @@ rule grab_validation_set_names_and_lengths:
         "envs/seqkit.yml"
     shell:
         """
-    cat {input} | gunzip > {output.validation}
-    seqkit faidx {output.validation}
-    """
+        cat {input} | gunzip > {output.validation}
+        seqkit faidx {output.validation}
+        """
 
 
 rule grab_traintest_coding_names_and_lengths:
@@ -134,9 +134,9 @@ rule grab_traintest_coding_names_and_lengths:
         "envs/seqkit.yml"
     shell:
         """
-    cat {input} | gunzip > {output.coding}
-    seqkit faidx {output.coding}
-    """
+        cat {input} | gunzip > {output.coding}
+        seqkit faidx {output.coding}
+        """
 
 
 rule grab_traintest_noncoding_names_and_lengths:
@@ -149,9 +149,9 @@ rule grab_traintest_noncoding_names_and_lengths:
         "envs/seqkit.yml"
     shell:
         """
-    cat {input} | gunzip > {output.noncoding}
-    seqkit faidx {output.noncoding}
-    """
+        cat {input} | gunzip > {output.noncoding}
+        seqkit faidx {output.noncoding}
+        """
 
 
 rule process_sequences_into_nonoverlapping_sets:
@@ -187,8 +187,8 @@ rule filter_sequence_sets:
         "envs/seqtk.yml"
     shell:
         """
-    seqtk subseq {input.fa} {input.names} > {output}
-    """
+        seqtk subseq {input.fa} {input.names} > {output}
+        """
 
 
 ##################################################################
@@ -213,8 +213,8 @@ rule build_rnasamba_model:
         "envs/rnasamba.yml"
     shell:
         """
-    rnasamba train --early_stopping 5 --verbose 2 {output} {input[0]} {input[1]}
-    """
+        rnasamba train --early_stopping 5 --verbose 2 {output} {input[0]} {input[1]}
+        """
 
 
 rule assess_rnasamba_model:
@@ -230,8 +230,8 @@ rule assess_rnasamba_model:
         "envs/rnasamba.yml"
     shell:
         """
-    rnasamba classify --protein_fasta {output.faa} {output.predictions} {input.faa} {input.model}
-    """
+        rnasamba classify --protein_fasta {output.faa} {output.predictions} {input.faa} {input.model}
+        """
 
 
 rule calculate_rnasamba_model_accuracy:
@@ -258,8 +258,8 @@ rule download_rnasamba_human_model:
         "outputs/models/rnasamba/build/3_model/human_rnasamba.hdf5",
     shell:
         """
-    curl -JLo {output} https://github.com/apcamargo/RNAsamba/raw/master/data/full_length_weights.hdf5
-    """
+        curl -JLo {output} https://github.com/apcamargo/RNAsamba/raw/master/data/full_length_weights.hdf5
+        """
 
 
 ##################################################################
@@ -276,8 +276,8 @@ rule get_sequence_descriptors:
         "envs/seqkit.yml"
     shell:
         """
-    seqkit faidx -f {input}
-    """
+        seqkit faidx -f {input}
+        """
 
 
 rule calculate_sequence_statistics:
