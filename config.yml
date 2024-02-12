@@ -1,0 +1,28 @@
+################################################################################
+## Input file descriptions
+################################################################################
+
+# Config parameters in this file are used as defaults by the pipeline (Snakefile).
+# To override the defaults, create a copy of this file and pass your new file to snakemake using the --configfile flag.
+# Any parameters in the new config file will overwrite the defaults listed here.
+
+###########
+# File IO #
+###########
+
+# Specify the input and output directories
+input_dir: "inputs/"
+output_dir: "outputs/"
+
+# All input files are produced by reads2transcriptome.
+# While this is not a strict requirement, using these output files gives us the ability to look at very short contiguous sequences.
+# TER TODO: update names of output files based on Nextflow of reads2transcriptome.
+# - short_contigs: contigs that are shorter than X nucleotides, which do not progress through the assembly pipeline. These may contain sORFs and so are included.
+# - orfs_amino_acids: predicted ORFs translated into amino acids. Output by transdecoder. Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
+# - orfs_nucleotides: predicted ORFs as nucleotide sequences. Output by transdecoder. Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
+# - all_contigs: all contigs as nucleotide sequences. Used to identify contigs shorter than X nucleotides (300) to scan for sORFs and to predict lncRNAs, which may have sORFs embedded in them.
+
+short_contigs: "demo/short_contigs.fa"
+orfs_amino_acids: "demo/orfs_amino_acids.faa"
+orfs_nucleotides: "demo/orfs_nucleotides.fa"
+all_contigs: "demo/all_contigs.fa"

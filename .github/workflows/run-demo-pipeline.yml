@@ -20,14 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Create empty input files
-        run: |
-          mkdir -p inputs/reads2transcriptome_outputs
-          touch inputs/reads2transcriptome_outputs/small_contigs.fa
-          touch inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.pep
-          touch inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.transdecoder.cds
-          touch inputs/reads2transcriptome_outputs/orthofuser_final_clean.fa.dammit.fasta
-
       - name: Test workflow
         uses: snakemake/snakemake-github-action@v1.24.0
         with:
