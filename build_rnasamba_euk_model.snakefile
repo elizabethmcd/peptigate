@@ -199,7 +199,7 @@ rule filter_sequence_sets:
 rule build_rnasamba_model:
     """
     Build a new rnasamba model from the training data curated above.
-    The --early_stopping parameter reduces training time and can help avoiding overfitting.
+    The --early_stopping parameter reduces training time and can help avoid overfitting.
     It is the number of epochs after lowest validation loss before stopping training.
     """
     input:

@@ -5,7 +5,7 @@ library(dplyr)
 
 split_train_and_test_data <- function(df, fraction = 0.8, seed = 1){
   # sample without replacement to select fraction of the data set as a training data set
-  set.seed(1) # set seed so that the sample command gives the same results each time it is run
+  set.seed(seed) # set seed so that the sample command gives the same results each time it is run
   df_annotation <- sort(sample(nrow(df), nrow(df)* fraction))
   train <- df[df_annotation, ]
   test <- df[-df_annotation, ]
