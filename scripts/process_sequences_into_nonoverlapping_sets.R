@@ -1,16 +1,17 @@
 library(readr)
 library(dplyr)
+source("scripts/parse_sequence_information.R")
 
 # functions ---------------------------------------------------------------
 
-split_train_and_test_data <- function(df, fraction = 0.8, seed = 1){
-  # sample without replacement to select fraction of the data set as a training data set
-  set.seed(seed) # set seed so that the sample command gives the same results each time it is run
-  df_annotation <- sort(sample(nrow(df), nrow(df)* fraction))
-  train <- df[df_annotation, ]
-  test <- df[-df_annotation, ]
-  return(list(train_df = train, test_df = test))
-}
+# split_train_and_test_data <- function(df, fraction = 0.8, seed = 1){
+#   # sample without replacement to select fraction of the data set as a training data set
+#   set.seed(seed) # set seed so that the sample command gives the same results each time it is run
+#   df_annotation <- sort(sample(nrow(df), nrow(df)* fraction))
+#   train <- df[df_annotation, ]
+#   test <- df[-df_annotation, ]
+#   return(list(train_df = train, test_df = test))
+# }
 
 # read in data sets ------------------------------------------------------
 
@@ -18,32 +19,51 @@ fai_col_names <- c("sequence", "length", "offset", "linebases", "linewidth")
 clusters <- read_tsv(snakemake@input[['clusters']], col_names = c("rep", "cluster_member"))
 coding_validation <- read_tsv(unlist(snakemake@input[['validation_fai']])[1], col_names = fai_col_names)
 noncoding_validation <- read_tsv(unlist(snakemake@input[['validation_fai']])[2], col_names = fai_col_names)
-coding_traintest <- read_tsv(unlist(snakemake@input[['traintest_fai']])[1], col_names = fai_col_names)
-noncoding_traintest <- read_tsv(unlist(snakemake@input[['traintest_fai']])[2], col_names = fai_col_names)
+all_fai <- read_tsv(snakemake@input[['all_fai']], col_names = fai_col_names) %>%
+  parse_sequence_information_from_seqkit_fai()
+
+metadata <- read_tsv("inputs/models/rnasamba/build/train_data_links.tsv") %>%
+  select(organism, genome = genome_abbreviation, set_name)
 
 fai_col_names <- c("sequence", "length", "offset", "linebases", "linewidth")
 clusters <- read_tsv("outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv", col_names = c("rep", "cluster_member"))
-coding_validation <- read_tsv("inputs/validation/rnachallenge/mRNAs.fa.fai", col_names = fai_col_names)
-noncoding_validation <- read_tsv("inputs/validation/rnachallenge/ncRNAs.fa.fai", col_names = fai_col_names)
-coding_traintest <- read_tsv("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_coding.fa.fai", col_names = fai_col_names)
-noncoding_traintest <- read_tsv("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_noncoding.fa.fai", col_names = fai_col_names)
-# filter to non-overlapping sets ------------------------------------------
+coding_validation <- read_tsv("inputs/validation/rnachallenge/mRNAs.fa.seqkit.fai", col_names = fai_col_names)
+noncoding_validation <- read_tsv("inputs/validation/rnachallenge/ncRNAs.fa.seqkit.fai", col_names = fai_col_names)
+all_fai <- read_tsv("outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.seqkit.fai", col_names = fai_col_names)
 
-noncoding_validation_filtered <- noncoding_validation %>%
-  filter(sequence %in% clusters$rep) %>%                  # keep sequences that had =<80% homology to other sequences
-  filter(!sequence %in% noncoding_traintest$sequence) %>% # remove sequences that are in the noncoding train/test set
-  filter(!sequence %in% coding_traintest$sequence)        # remove sequences that ensembl now annotates as coding from validation
 
-coding_validation_filtered <- coding_validation %>% 
-  filter(sequence %in% clusters$rep) %>%               # keep sequences that had =<80% homology to other sequences
-  filter(!sequence %in% coding_traintest$sequence) %>% # remove seqencues that are in the coding train/test set
-  filter(!sequence %in% noncoding_traintest$sequence)  # remove sequences that are in the noncoding train/test set
+# homology reduction ------------------------------------------------------
 
-noncoding_traintest_filtered <- noncoding_traintest %>%
-  filter(sequence %in% clusters$rep) # keep sequences that had =<80% homology to other sequences
+# filter to homology reduced sequences -- keep sequences that had =<80% homology to other sequences
+all_fai_filtered <- all_fai %>%
+  mutate(sequence_id = gsub(" .*", "", sequence)) %>%
+  filter(sequence_id %in% clusters$rep) %>%
+  select(-sequence_id)
 
-coding_traintest_filtered <- coding_traintest %>%
-  filter(sequence %in% clusters$rep) # keep sequences that had =<80% homology to other sequences
+# data set separation -----------------------------------------------------
+
+traintest <- all_fai_filtered %>%
+  filter(!sequence %in% c(coding_validation_filtered$sequence, noncoding_validation_filtered$sequence)) %>% # remove sequences that are in the validation sets
+  parse_sequence_information_from_seqkit_fai(dataset_type = FALSE) %>%
+  left_join(metadata, by = c("genome"))
+
+train <- traintest %>%
+  filter(set_name == "train")
+coding_train <- train %>% filter(sequence_type == "cdna")
+noncoding_train <- train %>% filter(sequence_type == "ncrna")
+
+test <- traintest %>%
+  filter(set_name == "test")
+coding_test <- test %>% filter(sequence_type == "cdna")
+noncoding_test <- test %>% filter(sequence_type == "ncrna")
+
+coding_validation_filtered <- all_fai_filtered %>%
+  filter(sequence %in% coding_validation$sequence) %>% # filter to coding sequences
+  filter(!sequence %in% traintest$sequence_id)         # remove sequences that overlap with the training/testing data
+
+noncoding_validation_filtered <- all_fai_filtered %>%
+  filter(sequence %in% noncoding_validation$sequence) %>% # filter to noncoding sequences
+  filter(!sequence %in% traintest$sequence_id)            # remove sequences that overlap with the training/testing data
 
 # augment the noncoding traintest set to balance sizes  ------------------
 
@@ -52,22 +72,17 @@ coding_traintest_filtered <- coding_traintest %>%
 # but that would require altering the source code of the RNAsamba tool.
 # This approach should produce equivalent results.
 
-num_rows_target <- nrow(coding_traintest_filtered)
+num_rows_target <- nrow(coding_train)
 
-noncoding_traintest_filtered <- noncoding_traintest_filtered %>%
+noncoding_train <- noncoding_train %>%
   slice_sample(n = num_rows_target, replace = TRUE)
 
-# split training and testing sets -----------------------------------------
-
-coding_traintest_split <- split_train_and_test_data(coding_traintest_filtered)
-noncoding_traintest_split <- split_train_and_test_data(noncoding_traintest_filtered)
-
 # write out contigs names for each set ------------------------------------
+
 snakemake_output <- unlist(snakemake@output)
-print(snakemake_output)
-write.table(coding_traintest_split$train_df$sequence, snakemake_output[1], quote = F, col.names = F, row.names = F)
-write.table(coding_traintest_split$test_df$sequence, snakemake_output[2], quote = F, col.names = F, row.names = F)
-write.table(coding_validation_filtered$sequence, snakemake_output[3], quote = F, col.names = F, row.names = F)
-write.table(noncoding_traintest_split$train_df$sequence, snakemake_output[4], quote = F, col.names = F, row.names = F)
-write.table(noncoding_traintest_split$test_df$sequence, snakemake_output[5], quote = F, col.names = F, row.names = F)
+write.table(coding_train$sequence, snakemake_output[1], quote = F, col.names = F, row.names = F)
+write.table(coding_test$sequence, snakemake_output[2], quote = F, col.names = F, row.names = F)
+write.table(coding_validation$sequence, snakemake_output[3], quote = F, col.names = F, row.names = F)
+write.table(noncoding_train_split$sequence, snakemake_output[4], quote = F, col.names = F, row.names = F)
+write.table(noncoding_test_split$sequence, snakemake_output[5], quote = F, col.names = F, row.names = F)
 write.table(noncoding_validation_filtered$sequence, snakemake_output[6], quote = F, col.names = F, row.names = F)

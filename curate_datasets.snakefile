@@ -11,7 +11,7 @@ VALIDATION_TYPES = [
 ]  # inherits names from https://github.com/cbl-nabi/RNAChallenge
 CODING_TYPES = ["coding", "noncoding"]
 DATASET_TYPES = ["train", "test", "validation"]
-MODEL_TYPES = ["eu", "human"]
+MODEL_TYPES = ["eukaryote", "human"]
 
 
 rule all:
@@ -83,19 +83,30 @@ rule combine_sequences:
             validation_type=VALIDATION_TYPES,
         ),
     output:
-        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.gz",
+        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa",
     shell:
         """
-        cat {input} > {output}
+        cat {input} | gunzip > {output}
         """
 
+rule grab_all_sequence_names_and_lengths:
+    input:
+        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa",
+    output:
+        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.seqkit.fai",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        seqkit faidx -f {input}
+        """
 
 rule reduce_sequence_homology:
     """
     To reduce pollution between training and testing set, cluster sequences at 80% sequence identity.
     """
     input:
-        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.gz",
+        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa",
     output:
         "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq.fasta",
         "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv",
@@ -110,58 +121,29 @@ rule reduce_sequence_homology:
 
 
 rule grab_validation_set_names_and_lengths:
+    """
+    The train/test data set sequences are identifiable by the genome information in the header, which is consistently formatted by Ensembl.
+    The same is not true for the validation data.
+    This rule grabs the validation sequence header names so they can be separated from the train/test sets.
+    """
     input:
         "inputs/validation/rnachallenge/{validation_type}.fa.gz",
     output:
         validation="inputs/validation/rnachallenge/{validation_type}.fa",
-        validation_fai="inputs/validation/rnachallenge/{validation_type}.fa.fai",
+        validation_fai="inputs/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
     conda:
         "envs/seqkit.yml"
     shell:
         """
         cat {input} | gunzip > {output.validation}
-        seqkit faidx {output.validation}
+        seqkit faidx -f {output.validation}
         """
-
-
-rule grab_traintest_coding_names_and_lengths:
-    input:
-        expand("outputs/models/rnasamba/build/0_coding/{genome}.fa.gz", genome=GENOMES),
-    output:
-        coding="outputs/models/rnasamba/build/2_sequence_sets/traintest/all_coding.fa",
-        coding_fai="outputs/models/rnasamba/build/2_sequence_sets/traintest/all_coding.fa.fai",
-    conda:
-        "envs/seqkit.yml"
-    shell:
-        """
-        cat {input} | gunzip > {output.coding}
-        seqkit faidx {output.coding}
-        """
-
-
-rule grab_traintest_noncoding_names_and_lengths:
-    input:
-        expand("inputs/ensembl/ncrna/{genome}.ncrna.fa.gz", genome=GENOMES),
-    output:
-        noncoding="outputs/models/rnasamba/build/2_sequence_sets/traintest/all_noncoding.fa",
-        noncoding_fai="outputs/models/rnasamba/build/2_sequence_sets/traintest/all_noncoding.fa.fai",
-    conda:
-        "envs/seqkit.yml"
-    shell:
-        """
-        cat {input} | gunzip > {output.noncoding}
-        seqkit faidx {output.noncoding}
-        """
-
 
 rule process_sequences_into_nonoverlapping_sets:
     input:
-        traintest_fai=expand(
-            "outputs/models/rnasamba/build/2_sequence_sets/traintest/all_{coding_type}.fa.fai",
-            coding_type=CODING_TYPES,
-        ),
+        all_fai="outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.seqkit.fai",
         validation_fai=expand(
-            "inputs/validation/rnachallenge/{validation_type}.fa.fai",
+            "inputs/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
             validation_type=VALIDATION_TYPES,
         ),
         clusters="outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv",
@@ -208,7 +190,7 @@ rule build_rnasamba_model:
             coding_type=CODING_TYPES,
         ),
     output:
-        "outputs/models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        "outputs/models/rnasamba/build/3_model/eukaryote_rnasamba.hdf5",
     conda:
         "envs/rnasamba.yml"
     shell:
@@ -278,7 +260,6 @@ rule get_sequence_descriptors:
         """
         seqkit faidx -f {input}
         """
-
 
 rule calculate_sequence_statistics:
     input:
