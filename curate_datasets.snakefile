@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import re
 
-metadata = pd.read_csv("inputs/models/rnasamba/build/train_data_links.tsv", sep="\t")
+metadata = pd.read_csv("inputs/models/datasets/train_data_links.tsv", sep="\t")
 GENOMES = metadata["genome"].unique().tolist()
 RNA_TYPES = ["cdna", "ncrna"]  # inherits names from ensembl
 VALIDATION_TYPES = [
@@ -16,9 +16,9 @@ MODEL_TYPES = ["eukaryote", "human"]
 
 rule all:
     input:
-        "outputs/models/rnasamba/build/5_stats/set_summary.tsv",
+        "outputs/models/datasets/3_stats/set_summary.tsv",
         expand(
-            "outputs/models/rnasamba/build/4_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
+            "outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
             model_type=MODEL_TYPES,
             dataset_type=DATASET_TYPES,
         ),
@@ -35,7 +35,7 @@ rule download_ensembl_data:
     - ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz   -> ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz (no change)
     """
     output:
-        "inputs/ensembl/{rna_type}/{genome}.{rna_type}.fa.gz",
+        "inputs/models/datasets/ensembl/{rna_type}/{genome}.{rna_type}.fa.gz",
     run:
         genome_df = metadata.loc[(metadata["genome"] == wildcards.genome)]
         root_url = genome_df["root_url"].values[0]
@@ -54,9 +54,9 @@ rule extract_protein_coding_orfs_from_cdna:
     Transcripts in the cDNA files have headers like: >TRANSCRIPT_ID SEQTYPE LOCATION GENE_ID GENE_BIOTYPE TRANSCRIPT_BIOTYPE, where the gene_biotype and transcript_biotype both contain information about whether the gene is coding or not.
     """
     input:
-        "inputs/ensembl/cdna/{genome}.cdna.fa.gz",
+        "inputs/models/datasets/ensembl/cdna/{genome}.cdna.fa.gz",
     output:
-        "outputs/models/rnasamba/build/0_coding/{genome}.fa.gz",
+        "outputs/models/datasets/0_coding/{genome}.fa.gz",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -67,7 +67,7 @@ rule extract_protein_coding_orfs_from_cdna:
 
 rule download_validation_data:
     output:
-        "inputs/validation/rnachallenge/{validation_type}.fa.gz",
+        "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.gz",
     shell:
         """
         curl -JL https://raw.githubusercontent.com/cbl-nabi/RNAChallenge/main/RNAchallenge/{wildcards.validation_type}.fa | gzip > {output}
@@ -76,14 +76,14 @@ rule download_validation_data:
 
 rule combine_sequences:
     input:
-        coding=expand("outputs/models/rnasamba/build/0_coding/{genome}.fa.gz", genome=GENOMES),
-        noncoding=expand("inputs/ensembl/ncrna/{genome}.ncrna.fa.gz", genome=GENOMES),
+        coding=expand("outputs/models/datasets/0_coding/{genome}.fa.gz", genome=GENOMES),
+        noncoding=expand("inputs/models/datasets/ensembl/ncrna/{genome}.ncrna.fa.gz", genome=GENOMES),
         validation=expand(
-            "inputs/validation/rnachallenge/{validation_type}.fa.gz",
+            "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.gz",
             validation_type=VALIDATION_TYPES,
         ),
     output:
-        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa",
+        "outputs/models/datasets/1_homology_reduction/all_sequences.fa",
     shell:
         """
         cat {input} | gunzip > {output}
@@ -91,9 +91,9 @@ rule combine_sequences:
 
 rule grab_all_sequence_names_and_lengths:
     input:
-        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa",
+        "outputs/models/datasets/1_homology_reduction/all_sequences.fa",
     output:
-        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.seqkit.fai",
+        "outputs/models/datasets/1_homology_reduction/all_sequences.fa.seqkit.fai",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -106,12 +106,12 @@ rule reduce_sequence_homology:
     To reduce pollution between training and testing set, cluster sequences at 80% sequence identity.
     """
     input:
-        "outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa",
+        "outputs/models/datasets/1_homology_reduction/all_sequences.fa",
     output:
-        "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq.fasta",
-        "outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv",
+        "outputs/models/datasets/1_homology_reduction/clustered_sequences_rep_seq.fasta",
+        "outputs/models/datasets/1_homology_reduction/clustered_sequences_cluster.tsv",
     params:
-        prefix="outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences",
+        prefix="outputs/models/datasets/1_homology_reduction/clustered_sequences",
     conda:
         "envs/mmseqs2.yml"
     shell:
@@ -127,10 +127,10 @@ rule grab_validation_set_names_and_lengths:
     This rule grabs the validation sequence header names so they can be separated from the train/test sets.
     """
     input:
-        "inputs/validation/rnachallenge/{validation_type}.fa.gz",
+        "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.gz",
     output:
-        validation="inputs/validation/rnachallenge/{validation_type}.fa",
-        validation_fai="inputs/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
+        validation="inputs/models/datasets/validation/rnachallenge/{validation_type}.fa",
+        validation_fai="inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -141,15 +141,15 @@ rule grab_validation_set_names_and_lengths:
 
 rule process_sequences_into_nonoverlapping_sets:
     input:
-        all_fai="outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.seqkit.fai",
+        all_fai="outputs/models/datasets/1_homology_reduction/all_sequences.fa.seqkit.fai",
         validation_fai=expand(
-            "inputs/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
+            "inputs/models/datsets/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
             validation_type=VALIDATION_TYPES,
         ),
-        clusters="outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv",
+        clusters="outputs/models/datasets/1_homology_reduction/clustered_sequences_cluster.tsv",
     output:
         expand(
-            "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.txt",
+            "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.txt",
             coding_type=CODING_TYPES,
             dataset_type=DATASET_TYPES,
         ),
@@ -161,10 +161,10 @@ rule process_sequences_into_nonoverlapping_sets:
 
 rule filter_sequence_sets:
     input:
-        fa="outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_rep_seq.fasta",
-        names="outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.txt",
+        fa="outputs/models/datasets/1_homology_reduction/clustered_sequences_rep_seq.fasta",
+        names="outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.txt",
     output:
-        "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa",
+        "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
     conda:
         "envs/seqtk.yml"
     shell:
@@ -186,11 +186,11 @@ rule build_rnasamba_model:
     """
     input:
         expand(
-            "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_train.fa",
+            "outputs/models/datasets/2_sequence_sets/{coding_type}_train.fa",
             coding_type=CODING_TYPES,
         ),
     output:
-        "outputs/models/rnasamba/build/3_model/eukaryote_rnasamba.hdf5",
+        "outputs/models/build/rnasamba/0_model/eukaryote_rnasamba.hdf5",
     conda:
         "envs/rnasamba.yml"
     shell:
@@ -201,13 +201,13 @@ rule build_rnasamba_model:
 
 rule assess_rnasamba_model:
     input:
-        model="outputs/models/rnasamba/build/3_model/{model_type}_rnasamba.hdf5",
-        faa="outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa",
+        model="outputs/models/build/rnasamba/0_model/{model_type}_rnasamba.hdf5",
+        faa="outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
     output:
-        faa="outputs/models/rnasamba/build/4_evaluation/{model_type}/{coding_type}_{dataset_type}.fa",
-        predictions="outputs/models/rnasamba/build/4_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv",
+        faa="outputs/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.fa",
+        predictions="outputs/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv",
     benchmark:
-        "benchmarks/models/rnasamba/build/4_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv"
+        "benchmarks/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv"
     conda:
         "envs/rnasamba.yml"
     shell:
@@ -219,12 +219,12 @@ rule assess_rnasamba_model:
 rule calculate_rnasamba_model_accuracy:
     input:
         expand(
-            "outputs/models/rnasamba/build/4_evaluation/{{model_type}}/{coding_type}_{{dataset_type}}.tsv",
+            "outputs/models/build/rnasamba/1_evaluation/{{model_type}}/{coding_type}_{{dataset_type}}.tsv",
             coding_type=CODING_TYPES,
         ),
     output:
-        freq="outputs/models/rnasamba/build/4_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
-        metrics="outputs/models/rnasamba/build/4_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
+        freq="outputs/models/build/build/1_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
+        metrics="outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
     conda:
         "envs/caret.yml"
     script:
@@ -237,7 +237,7 @@ rule download_rnasamba_human_model:
     It's saved under a new name so we can use a wildcard to run rnasamba classify and to calculate model accuracy.
     """
     output:
-        "outputs/models/rnasamba/build/3_model/human_rnasamba.hdf5",
+        "outputs/models/build/rnasamba/0_model/human_rnasamba.hdf5",
     shell:
         """
         curl -JLo {output} https://github.com/apcamargo/RNAsamba/raw/master/data/full_length_weights.hdf5
@@ -251,9 +251,9 @@ rule download_rnasamba_human_model:
 
 rule get_sequence_descriptors:
     input:
-        "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa",
+        "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
     output:
-        "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai",
+        "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -264,14 +264,14 @@ rule get_sequence_descriptors:
 rule calculate_sequence_statistics:
     input:
         expand(
-            "outputs/models/rnasamba/build/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai",
+            "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa.seqkit.fai",
             coding_type=CODING_TYPES,
             dataset_type=DATASET_TYPES,
         ),
     output:
-        set_summary="outputs/models/rnasamba/build/5_stats/set_summary.tsv",
-        set_length_summary="outputs/models/rnasamba/build/5_stats/set_length_summary.tsv",
-        set_length_genome_summary="outputs/models/rnasamba/build/5_stats/set_length_genome_summary.tsv",
+        set_summary="outputs/models/datasets/3_stats/set_summary.tsv",
+        set_length_summary="outputs/models/datasets/3_stats/set_length_summary.tsv",
+        set_length_genome_summary="outputs/models/datasets/3_stats/set_length_genome_summary.tsv",
     conda:
         "envs/tidyverse.yml"
     script:
