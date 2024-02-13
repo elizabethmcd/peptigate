@@ -25,7 +25,7 @@ all_fai_filtered <- all_fai %>%
 # data set separation -----------------------------------------------------
 
 traintest <- all_fai_filtered %>%
-  filter(!sequence %in% c(coding_validation_filtered$sequence, noncoding_validation_filtered$sequence)) %>% # remove sequences that are in the validation sets
+  filter(!sequence %in% c(coding_validation$sequence, noncoding_validation$sequence)) %>% # remove sequences that are in the validation sets
   parse_sequence_information_from_seqkit_fai(dataset_type = FALSE) %>%
   left_join(metadata, by = c("genome"))
 
@@ -64,7 +64,7 @@ noncoding_train <- noncoding_train %>%
 snakemake_output <- unlist(snakemake@output)
 write.table(coding_train$sequence, snakemake_output[1], quote = F, col.names = F, row.names = F)
 write.table(coding_test$sequence, snakemake_output[2], quote = F, col.names = F, row.names = F)
-write.table(coding_validation$sequence, snakemake_output[3], quote = F, col.names = F, row.names = F)
-write.table(noncoding_train_split$sequence, snakemake_output[4], quote = F, col.names = F, row.names = F)
-write.table(noncoding_test_split$sequence, snakemake_output[5], quote = F, col.names = F, row.names = F)
+write.table(coding_validation_filtered$sequence, snakemake_output[3], quote = F, col.names = F, row.names = F)
+write.table(noncoding_train$sequence, snakemake_output[4], quote = F, col.names = F, row.names = F)
+write.table(noncoding_test$sequence, snakemake_output[5], quote = F, col.names = F, row.names = F)
 write.table(noncoding_validation_filtered$sequence, snakemake_output[6], quote = F, col.names = F, row.names = F)
