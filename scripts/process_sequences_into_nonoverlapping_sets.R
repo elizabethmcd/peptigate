@@ -2,17 +2,6 @@ library(readr)
 library(dplyr)
 source("scripts/parse_sequence_information.R")
 
-# functions ---------------------------------------------------------------
-
-# split_train_and_test_data <- function(df, fraction = 0.8, seed = 1){
-#   # sample without replacement to select fraction of the data set as a training data set
-#   set.seed(seed) # set seed so that the sample command gives the same results each time it is run
-#   df_annotation <- sort(sample(nrow(df), nrow(df)* fraction))
-#   train <- df[df_annotation, ]
-#   test <- df[-df_annotation, ]
-#   return(list(train_df = train, test_df = test))
-# }
-
 # read in data sets ------------------------------------------------------
 
 fai_col_names <- c("sequence", "length", "offset", "linebases", "linewidth")
@@ -22,15 +11,8 @@ noncoding_validation <- read_tsv(unlist(snakemake@input[['validation_fai']])[2],
 all_fai <- read_tsv(snakemake@input[['all_fai']], col_names = fai_col_names) %>%
   parse_sequence_information_from_seqkit_fai()
 
-metadata <- read_tsv("inputs/models/rnasamba/build/train_data_links.tsv") %>%
+metadata <- read_tsv(snakemake@input[['metadata']]) %>%
   select(organism, genome = genome_abbreviation, set_name)
-
-fai_col_names <- c("sequence", "length", "offset", "linebases", "linewidth")
-clusters <- read_tsv("outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv", col_names = c("rep", "cluster_member"))
-coding_validation <- read_tsv("inputs/validation/rnachallenge/mRNAs.fa.seqkit.fai", col_names = fai_col_names)
-noncoding_validation <- read_tsv("inputs/validation/rnachallenge/ncRNAs.fa.seqkit.fai", col_names = fai_col_names)
-all_fai <- read_tsv("outputs/models/rnasamba/build/1_homology_reduction/all_sequences.fa.seqkit.fai", col_names = fai_col_names)
-
 
 # homology reduction ------------------------------------------------------
 

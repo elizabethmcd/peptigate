@@ -146,6 +146,7 @@ rule grab_validation_set_names_and_lengths:
 
 rule process_sequences_into_nonoverlapping_sets:
     input:
+        metadata="inputs/models/datasets/train_data_links.tsv",
         all_fai="outputs/models/datasets/1_homology_reduction/all_sequences.fa.seqkit.fai",
         validation_fai=expand(
             "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
