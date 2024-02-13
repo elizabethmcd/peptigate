@@ -77,7 +77,9 @@ rule download_validation_data:
 rule combine_sequences:
     input:
         coding=expand("outputs/models/datasets/0_coding/{genome}.fa.gz", genome=GENOMES),
-        noncoding=expand("inputs/models/datasets/ensembl/ncrna/{genome}.ncrna.fa.gz", genome=GENOMES),
+        noncoding=expand(
+            "inputs/models/datasets/ensembl/ncrna/{genome}.ncrna.fa.gz", genome=GENOMES
+        ),
         validation=expand(
             "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.gz",
             validation_type=VALIDATION_TYPES,
@@ -88,6 +90,7 @@ rule combine_sequences:
         """
         cat {input} | gunzip > {output}
         """
+
 
 rule grab_all_sequence_names_and_lengths:
     input:
@@ -100,6 +103,7 @@ rule grab_all_sequence_names_and_lengths:
         """
         seqkit faidx -f {input}
         """
+
 
 rule reduce_sequence_homology:
     """
@@ -139,11 +143,12 @@ rule grab_validation_set_names_and_lengths:
         seqkit faidx -f {output.validation}
         """
 
+
 rule process_sequences_into_nonoverlapping_sets:
     input:
         all_fai="outputs/models/datasets/1_homology_reduction/all_sequences.fa.seqkit.fai",
         validation_fai=expand(
-            "inputs/models/datsets/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
+            "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa.seqkit.fai",
             validation_type=VALIDATION_TYPES,
         ),
         clusters="outputs/models/datasets/1_homology_reduction/clustered_sequences_cluster.tsv",
@@ -260,6 +265,7 @@ rule get_sequence_descriptors:
         """
         seqkit faidx -f {input}
         """
+
 
 rule calculate_sequence_statistics:
     input:
