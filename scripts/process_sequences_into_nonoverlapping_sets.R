@@ -21,6 +21,12 @@ noncoding_validation <- read_tsv(unlist(snakemake@input[['validation_fai']])[2],
 coding_traintest <- read_tsv(unlist(snakemake@input[['traintest_fai']])[1], col_names = fai_col_names)
 noncoding_traintest <- read_tsv(unlist(snakemake@input[['traintest_fai']])[2], col_names = fai_col_names)
 
+fai_col_names <- c("sequence", "length", "offset", "linebases", "linewidth")
+clusters <- read_tsv("outputs/models/rnasamba/build/1_homology_reduction/clustered_sequences_cluster.tsv", col_names = c("rep", "cluster_member"))
+coding_validation <- read_tsv("inputs/validation/rnachallenge/mRNAs.fa.fai", col_names = fai_col_names)
+noncoding_validation <- read_tsv("inputs/validation/rnachallenge/ncRNAs.fa.fai", col_names = fai_col_names)
+coding_traintest <- read_tsv("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_coding.fa.fai", col_names = fai_col_names)
+noncoding_traintest <- read_tsv("outputs/models/rnasamba/build/2_sequence_sets/traintest/all_noncoding.fa.fai", col_names = fai_col_names)
 # filter to non-overlapping sets ------------------------------------------
 
 noncoding_validation_filtered <- noncoding_validation %>%
@@ -39,25 +45,21 @@ noncoding_traintest_filtered <- noncoding_traintest %>%
 coding_traintest_filtered <- coding_traintest %>%
   filter(sequence %in% clusters$rep) # keep sequences that had =<80% homology to other sequences
 
-# subsample the coding traintest set to balance sizes  ------------------
+# augment the noncoding traintest set to balance sizes  ------------------
 
-# to avoid biases in classification, it's better to have the same number of sequences in the different classes
+# To avoid biases in classification, it's better to have the same number of sequences in the different classes.
+# This could also be done with changing the weights on the activation function of the model building in tensorflow,
+# but that would require altering the source code of the RNAsamba tool.
+# This approach should produce equivalent results.
 
-# select out all sORFs so these won't be filtered out since they are tricky cases
-coding_traintest_filtered_sorfs <- coding_traintest_filtered %>%
-  filter(length <= 300)
+num_rows_target <- nrow(coding_traintest_filtered)
 
-# sample out larger coding sequences
-coding_traintest_filtered_other <- coding_traintest_filtered %>%
-  filter(length > 300) %>%
-  sample_n(size = nrow(noncoding_traintest_filtered) - nrow(coding_traintest_filtered_sorfs))
-
-# combine to the final set of coding sequences that we'll use for training & testing
-coding_traintest_keep <- bind_rows(coding_traintest_filtered_other, coding_traintest_filtered_sorfs)
+noncoding_traintest_filtered <- noncoding_traintest_filtered %>%
+  slice_sample(n = num_rows_target, replace = TRUE)
 
 # split training and testing sets -----------------------------------------
 
-coding_traintest_split <- split_train_and_test_data(coding_traintest_keep)
+coding_traintest_split <- split_train_and_test_data(coding_traintest_filtered)
 noncoding_traintest_split <- split_train_and_test_data(noncoding_traintest_filtered)
 
 # write out contigs names for each set ------------------------------------
