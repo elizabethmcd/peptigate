@@ -221,6 +221,8 @@ rule build_rnasamba_model:
         "outputs/models/build/rnasamba/0_model/eukaryote_rnasamba.hdf5",
     conda:
         "envs/rnasamba.yml"
+    benchmark:
+        "benchmarks/models/build/rnasamba/0_model/eukaryote_rnasamba.tsv"
     shell:
         """
         rnasamba train --early_stopping 5 --verbose 2 {output} {input.fa[0]} {input.fa[1]}
