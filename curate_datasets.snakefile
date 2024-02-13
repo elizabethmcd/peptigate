@@ -183,6 +183,7 @@ rule filter_sequence_sets:
 ## Build RNAsamba model
 ##################################################################
 
+
 rule pip_install_rnasamba_no_deps:
     """
     To take advantage of nvidia GPU on AWS instance "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" (ami-07eb000b3340966b0),
@@ -192,13 +193,17 @@ rule pip_install_rnasamba_no_deps:
     and there is no way to specify the "--no-deps" flag in a yaml file.
     This rule installs rnasamba into the conda-generated environment.
     """
-    output: "outputs/models/build/rnasamba/rnasamba_installed.txt"
-    conda: "envs/rnasamba.yml"
-    shell:'''
-    pip install 'nvidia-tensorflow>=1.15'
-    pip install --no-deps rnasamba
-    touch {output}
-    '''
+    output:
+        "outputs/models/build/rnasamba/rnasamba_installed.txt",
+    conda:
+        "envs/rnasamba.yml"
+    shell:
+        """
+        pip install 'nvidia-tensorflow>=1.15'
+        pip install --no-deps rnasamba
+        touch {output}
+        """
+
 
 rule build_rnasamba_model:
     """
@@ -207,8 +212,8 @@ rule build_rnasamba_model:
     It is the number of epochs after lowest validation loss before stopping training.
     """
     input:
-        rnasamba = "outputs/models/build/rnasamba/rnasamba_installed.txt",
-        fa = expand(
+        rnasamba="outputs/models/build/rnasamba/rnasamba_installed.txt",
+        fa=expand(
             "outputs/models/datasets/2_sequence_sets/{coding_type}_train.fa",
             coding_type=CODING_TYPES,
         ),
