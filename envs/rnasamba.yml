@@ -3,4 +3,9 @@ channels:
    - bioconda
    - defaults
 dependencies:
-   - rnasamba=0.2.5
+  - python=3.8
+  - pip
+  - pip:
+    - nvidia-pyindex==1.0.9
+    - keras>=2.1.0,<2.3.0
+    - biopython==1.83
