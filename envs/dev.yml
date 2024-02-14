@@ -8,4 +8,5 @@ dependencies:
   - python=3.12.0
   - ruff=0.1.6
   - snakefmt=0.8.5
-  - snakemake-minimal=8.0.1
+  - snakemake-minimal=8.4.2
+  - pandas=2.2.0
