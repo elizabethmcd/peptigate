@@ -107,6 +107,29 @@ rule download_rnasamba_model:
         """
 
 
+rule pip_install_rnasamba_no_deps:
+    """
+    To take advantage of nvidia GPU on AWS instance "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" (ami-07eb000b3340966b0),
+    we need to install specific versions of tensorflow and other dependencies.
+    This is accomplished in part in the envs/rnasamba.yml file, however rnasamba itself is not installed there because we need to use the command:
+    pip install --no-deps rnasamba
+    and there is no way to specify the "--no-deps" flag in a yaml file.
+    This rule installs rnasamba into the conda-generated environment.
+    Note the output path is the same as that used by curate_datasets_and_build_models.snakefile, 
+    as this conda env will already be present and configured if that snakefile has been executed.
+    """
+    output:
+        pip="outputs/models/build/rnasamba/rnasamba_installed.txt",
+    conda:
+        "envs/rnasamba.yml"
+    shell:
+        """
+        pip install 'nvidia-tensorflow~=1.15'
+        pip install --no-deps rnasamba # used version 0.2.5
+        touch {output}
+        """
+
+
 rule rnasamba:
     """
     The eu_rnasamba.hdf5 model is only accurate on longer contigs.
@@ -116,6 +139,7 @@ rule rnasamba:
     """
     input:
         # TER TODO: update path when model is downloaded
+        pip=rules.pip_install_rnasamba_no_deps.output.pip,
         model=rules.download_rnasamba_model.output.model,
         contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa,
     output:
