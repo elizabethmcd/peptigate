@@ -253,7 +253,7 @@ rule calculate_rnasamba_model_accuracy:
             coding_type=CODING_TYPES,
         ),
     output:
-        freq="outputs/models/build/build/1_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
+        freq="outputs/models/build/rnasamba/1_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
         metrics="outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
     conda:
         "envs/caret.yml"
