@@ -50,9 +50,9 @@ noncoding_validation_filtered <- all_fai_filtered %>%
 # augment the noncoding traintest set to balance sizes  ------------------
 
 # To avoid biases in classification, it's better to have the same number of sequences in the different classes.
-# This could also be done with changing the weights on the activation function of the model building in tensorflow,
+# This could also be done with changing the weights on the loss function of the model building in tensorflow,
 # but that would require altering the source code of the RNAsamba tool.
-# This approach should produce equivalent results.
+# This approach should produce approximately equivalent results.
 
 num_rows_target <- nrow(coding_train)
 
