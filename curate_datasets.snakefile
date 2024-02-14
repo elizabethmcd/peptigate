@@ -199,8 +199,8 @@ rule pip_install_rnasamba_no_deps:
         "envs/rnasamba.yml"
     shell:
         """
-        pip install 'nvidia-tensorflow>=1.15'
-        pip install --no-deps rnasamba
+        pip install 'nvidia-tensorflow~=1.15'
+        pip install --no-deps rnasamba # used version 0.2.5
         touch {output}
         """
 
