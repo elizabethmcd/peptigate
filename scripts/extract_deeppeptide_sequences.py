@@ -1,24 +1,12 @@
 import json
 import sys
-
+from Bio import SeqIO
 
 def read_fasta(fasta_file):
-    """Read a FASTA file and return a dictionary of sequences."""
+    """Read a FASTA file using BioPython and return a dictionary of sequences."""
     sequences = {}
-    with open(fasta_file) as f:
-        sequence_id = None
-        sequence = ""
-        for line in f:
-            line = line.strip()
-            if line.startswith(">"):
-                if sequence_id:
-                    sequences[sequence_id] = sequence
-                sequence_id = line[1:].split()[0]  # Assume ID is the first part after '>'
-                sequence = ""
-            else:
-                sequence += line
-        if sequence_id:
-            sequences[sequence_id] = sequence
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        sequences[record.id] = str(record.seq)
     return sequences
 
 
