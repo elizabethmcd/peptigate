@@ -14,6 +14,7 @@ sys.modules["protai"] = nlpprecursor
 def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     Attempts to call the predict function up to a maximum number of attempts.
+    TODO: debug this problem if this pipeline becomes widely used
     On first attempt to call this function on a GPU,
     the function produces a RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED.
     Second execution succeeds.
@@ -32,7 +33,7 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
         try:
             # Try to make the prediction
             return predict_function(*args)
-        except Exception as e:
+        except RuntimeError as e:
             print(f"Attempt {attempt + 1} failed with error: {e}")
             if attempt + 1 < max_attempts:
                 print(f"Retrying in {sleep_time} seconds...")
