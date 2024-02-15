@@ -5,6 +5,9 @@ from pathlib import Path
 ## Configuration
 ################################################################################
 
+# Retrieves the absolute path of the directory snakemake is launched in.
+# Used by DeepPeptide to simplify output file paths. 
+WORKING_DIRPATH = Path(os.getcwd())
 
 # Default pipeline configuration parameters are in the config file.
 # If you create a new yml file and use the --configfile flag, 
@@ -255,8 +258,8 @@ rule deeppeptide:
         outdir2=OUTPUT_DIR / "cleavage/",
     shell:
         """
-        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
-        mv {params.outdir1} ../../../{params.outdir2}
+        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {WORKING_DIRPATH}/{input.faa} --output_dir {params.outdir1} --output_fmt json
+        mv {params.outdir1} {WORKING_DIRPATH}/{params.outdir2}
         """
 
 
