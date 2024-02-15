@@ -237,11 +237,14 @@ rule nlpprecursor:
 
 rule clone_deeppeptide:
     output:
-        src="cloned_repositories/DeepPeptide/LICENSE",
+        src=touch("cloned_repositories/DeepPeptide/deeppeptide_cloned.txt"),
     shell:
         """
-        cd cloned_repositories
-        git clone https://github.com/fteufel/DeepPeptide.git
+        # only clone the repo if it isn't already present
+        if [ ! -d cloned_repositories/DeepPeptide ]; then
+            git clone https://github.com/fteufel/DeepPeptide.git cloned_repositories/DeepPeptide
+        fi
+        cd cloned_repositories/DeepPeptide
         git checkout 2657f5dca38e6417c65da5913c1974ed932746e3
         """
 
@@ -255,12 +258,11 @@ rule deeppeptide:
     conda:
         "envs/deeppeptide.yml"
     params:
-        outdir1=OUTPUT_DIR / "cleavage/deeppeptide/",
-        outdir2=OUTPUT_DIR / "cleavage/",
+        outdir=OUTPUT_DIR / "cleavage/deeppeptide",
     shell:
         """
-        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {WORKING_DIRPATH}/{input.faa} --output_dir {params.outdir1} --output_fmt json
-        mv {params.outdir1} {WORKING_DIRPATH}/{params.outdir2}
+        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {WORKING_DIRPATH}/{input.faa} --output_dir {params.outdir} --output_fmt json
+        mv {params.outdir}/* {WORKING_DIRPATH}/{params.outdir}/
         """
 
 
