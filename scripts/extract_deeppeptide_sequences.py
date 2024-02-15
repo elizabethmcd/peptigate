@@ -12,9 +12,7 @@ def read_fasta(fasta_file):
     return sequences
 
 
-def extract_peptide_sequences(
-    data, fasta_file, proteins_output_file, peptides_output_file
-):
+def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file):
     """
     Extract gene and peptide sequences based on the data dictionary and FASTA file,
     then write to separate files.
@@ -78,29 +76,17 @@ def main(json_file, fasta_file, proteins_output_file, peptides_output_file):
     with open(json_file) as f:
         data = json.load(f)
 
-    extract_peptide_sequences(
-        data, fasta_file, proteins_output_file, peptides_output_file
-    )
+    extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Extract peptide sequences from DeepPeptide JSON."
-    )
+    parser = argparse.ArgumentParser(description="Extract peptide sequences from DeepPeptide JSON.")
 
     # Add the arguments
-    parser.add_argument(
-        "json_file", type=str, help="The JSON file output by DeepPeptide."
-    )
-    parser.add_argument(
-        "fasta_file", type=str, help="The protein FASTA file input to DeepPeptide."
-    )
-    parser.add_argument(
-        "proteins_output_file", type=str, help="The output file path for proteins."
-    )
-    parser.add_argument(
-        "peptides_output_file", type=str, help="The output file path for peptides."
-    )
+    parser.add_argument("json_file", type=str, help="The JSON file output by DeepPeptide.")
+    parser.add_argument("fasta_file", type=str, help="The protein FASTA file input to DeepPeptide.")
+    parser.add_argument("proteins_output_file", type=str, help="The output file path for proteins.")
+    parser.add_argument("peptides_output_file", type=str, help="The output file path for peptides.")
 
     # Execute the parse_args() method
     args = parser.parse_args()
