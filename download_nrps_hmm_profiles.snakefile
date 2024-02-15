@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-INPUT_DIR = Path("inputs/")
-OUTPUT_DIR = Path("inputs/")
+INPUT_DIR = Path("inputs/models/")
+OUTPUT_DIR = Path("inputs/models/")
 NRPS_PFAMS = ['PF00501', 'PF06339', 'PF00975', 'PF00668',]
 
 rule download_nrps_pfam_hmms:
