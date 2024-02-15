@@ -5,9 +5,14 @@ from pathlib import Path
 ## Configuration
 ################################################################################
 
+# Retrieves the absolute path of the directory snakemake is launched in.
+# Used by DeepPeptide to simplify output file paths.
+WORKING_DIRPATH = Path(os.getcwd())
+
 
 # Default pipeline configuration parameters are in the config file.
-# If you create a new yml file and use the --configfile flag, options in that new file overwrite the defaults.
+# If you create a new yml file and use the --configfile flag,
+# options in that new file overwrite the defaults.
 configfile: "./config.yml"
 
 
@@ -41,7 +46,9 @@ rule filter_nt_contigs_to_short:
         """
 
 
-# TER TODO: Add a rule for sORF prediction, either once smallesm is developed, when there is an accurate sORF rnasamba model, or using another tool from Singh & Roy.
+# TER TODO: Add a rule for sORF prediction, either once smallesm is developed,
+#           when there is an accurate sORF rnasamba model,
+#           or using another tool from Singh & Roy.
 
 
 rule filter_nt_contigs_to_long:
@@ -59,8 +66,10 @@ rule filter_nt_contigs_to_long:
 
 rule get_coding_contig_names:
     """
-    Extract amino acid contig names and remove everything after the first period, which are isoform labels.
-    This file will be used to select all contigs that DO NOT encode ORFs, according to transdecoder.
+    Extract amino acid contig names and remove everything after the first period, 
+    which are isoform labels.
+    This file will be used to select all contigs that DO NOT encode ORFs, 
+    according to transdecoder.
     """
     input:
         ORFS_AMINO_ACIDS,
@@ -77,8 +86,9 @@ rule get_coding_contig_names:
 rule filter_long_contigs_to_no_predicted_ORF:
     """
     Many of the contigs in the full transcriptome have predicted ORFs.
-    The names of these contigs are recorded in the transdecoder input files (*pep and *cds, orfs_*).
-    By definition, these contigs are not noncoding RNAs, so they don't need to be considered for classification as long noncoding RNAs (lncRNA).
+    The names of these contigs are recorded in the transdecoder input files (*pep & *cds, orfs_*).
+    By definition, these contigs are not noncoding RNAs, 
+    so they don't need to be considered for classification as long noncoding RNAs (lncRNA).
     This step removes the contigs that contain ORFs.
     """
     input:
@@ -97,7 +107,8 @@ rule filter_long_contigs_to_no_predicted_ORF:
 rule download_rnasamba_model:
     """
     Place holder rule.
-    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, which is available locally from running it.
+    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, 
+    which is available locally from running it.
     """
     output:
         model=OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
@@ -109,9 +120,11 @@ rule download_rnasamba_model:
 
 rule pip_install_rnasamba_no_deps:
     """
-    To take advantage of nvidia GPU on AWS instance "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" (ami-07eb000b3340966b0),
+    To take advantage of nvidia GPU on AWS instance 
+    ("Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" ami-07eb000b3340966b0),
     we need to install specific versions of tensorflow and other dependencies.
-    This is accomplished in part in the envs/rnasamba.yml file, however rnasamba itself is not installed there because we need to use the command:
+    This is accomplished in part in the envs/rnasamba.yml file, 
+    however rnasamba itself is not installed there because we need to use the command:
     pip install --no-deps rnasamba
     and there is no way to specify the "--no-deps" flag in a yaml file.
     This rule installs rnasamba into the conda-generated environment.
@@ -132,10 +145,11 @@ rule pip_install_rnasamba_no_deps:
 
 rule rnasamba:
     """
-    The eu_rnasamba.hdf5 model is only accurate on longer contigs.
+    The eukaryote_rnasamba.hdf5 model is only accurate on longer contigs.
     It assesses whether they are long noncoding RNAs.
     However, lncRNAs often have sORFs that encode peptides.
-    This rule runs RNAsamba on longer contigs (>300nt) that were not predicted by transdecoder to contain ORFs.
+    This rule runs RNAsamba on longer contigs (>300nt) that were not predicted by transdecoder to 
+    contain ORFs.
     """
     input:
         # TER TODO: update path when model is downloaded
@@ -190,12 +204,19 @@ rule download_nlpprecursor_models:
 
 rule nlpprecursor:
     """
-    The nlpprecursor tool is part of the [DeepRiPP approach](https://doi.org/10.1073/pnas.1901493116) that predicts ribosomally synthesized postranslationally modified peptides, a subclass of cleavage peptides.
-    Unlike many tools in the RiPP prediction space, "NLPPrecursor identifies RiPPs independent of genomic context and neighboring biosynthetic genes."
-    Note the paper suggests, "the precursor cleavage algorithm predicted N-terminal cleavage sites with 90% accuracy, when considering cleavage points ±5 amino acids from the true prediction site, a range within which all possible complete chemical structures can be elaborated in silico by combinatorial structure prediction."    
-    From the DeepRiPP paper supplement: "Protein sequences of open reading frames are used as input.
-    The output of the model consists of a classification of each ORF as either a precursor peptide (further subclassified according to RiPP family), or a non-precursor peptide. 
-    A total of 14 classes are identified (n_class)."
+    The nlpprecursor tool is part of [DeepRiPP](https://doi.org/10.1073/pnas.1901493116)
+    that predicts ribosomally synthesized postranslationally modified peptides, 
+    a subclass of cleavage peptides.
+    Unlike many tools in the RiPP prediction space, "NLPPrecursor identifies RiPPs independent of 
+    genomic context and neighboring biosynthetic genes."
+    Note the paper suggests, "the precursor cleavage algorithm predicted N-terminal cleavage sites 
+    with 90% accuracy, when considering cleavage points ±5 amino acids from the true prediction 
+    site, a range within which all possible complete chemical structures can be elaborated in 
+    silico by combinatorial structure prediction."    
+    From the DeepRiPP paper supplement: 
+    "Protein sequences of open reading frames are used as input. The output of the model consists 
+     of a classification of each ORF as either a precursor peptide (further subclassified according 
+    to RiPP family), or a non-precursor peptide. A total of 14 classes are identified (n_class)."
     """
     input:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
@@ -217,11 +238,14 @@ rule nlpprecursor:
 
 rule clone_deeppeptide:
     output:
-        src="cloned_repositories/DeepPeptide/LICENSE",
+        src=touch("cloned_repositories/DeepPeptide/deeppeptide_cloned.txt"),
     shell:
         """
-        cd cloned_repositories
-        git clone https://github.com/fteufel/DeepPeptide.git
+        # only clone the repo if it isn't already present
+        if [ ! -d cloned_repositories/DeepPeptide ]; then
+            git clone https://github.com/fteufel/DeepPeptide.git cloned_repositories/DeepPeptide
+        fi
+        cd cloned_repositories/DeepPeptide
         git checkout 2657f5dca38e6417c65da5913c1974ed932746e3
         """
 
@@ -235,20 +259,21 @@ rule deeppeptide:
     conda:
         "envs/deeppeptide.yml"
     params:
-        outdir1=OUTPUT_DIR / "cleavage/deeppeptide/",
-        outdir2=OUTPUT_DIR / "cleavage/",
+        outdir=OUTPUT_DIR / "cleavage/deeppeptide",
     shell:
         """
-        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile ../../../{input.faa} --output_dir {params.outdir1} --output_fmt json
-        mv {params.outdir1} ../../../{params.outdir2}
+        cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {WORKING_DIRPATH}/{input.faa} --output_dir {params.outdir} --output_fmt json
+        mv {params.outdir}/* {WORKING_DIRPATH}/{params.outdir}/
         """
 
 
 rule extract_deeppeptide_sequences:
     """
-    DeepPeptide outputs a json file of peptide predictions and locations, but does not output the sequences themselves.
+    DeepPeptide outputs a json file of peptide predictions and locations,
+    but does not output the sequences themselves.
     This step parses the JSON file and the protein FASTA from which peptides were predicted.
-    It outputs the propeptide (full ORF, uncleaved) as well as the predicted peptide sequence (cleaved) in FASTA format.
+    It outputs the propeptide (full ORF, uncleaved) and the predicted peptide sequence (cleaved)
+    in FASTA format.
     """
     input:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
@@ -257,7 +282,7 @@ rule extract_deeppeptide_sequences:
         propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
         peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
     conda:
-        "envs/deeppeptide.yml"
+        "envs/biopython.yml"
     shell:
         """
         python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
@@ -306,7 +331,7 @@ rule all:
 
 rule sORF:
     """
-    Defines a target rule for sORF prediction so a user can run only sORF prediction if they desire.
+    Defines a target rule for sORF prediction so a user can run only sORF prediction.
     snakemake sORF --software-deployment-method conda -j 8 
     """
     input:
@@ -315,7 +340,7 @@ rule sORF:
 
 rule cleavage:
     """
-    Defines a target rule for cleavage prediction so a user can run only cleavage prediction if they desire.
+    Defines a target rule for cleavage prediction so a user can run only cleavage prediction.
     snakemake cleavage --software-deployment-method conda -j 8 
     """
     input:
