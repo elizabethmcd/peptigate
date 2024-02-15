@@ -1,3 +1,4 @@
+import csv
 import sys
 import time
 from pathlib import Path
@@ -71,33 +72,45 @@ def main(models_dir, multifasta_file, output_tsv):
 
     # The output of nlpprecursor predictions are in JSON format.
     # The code below parses the JSON into a TSV format.
-with open(output_tsv, 'w', newline='\n') as file:
-    writer = csv.writer(file, delimiter='\t')
 
-    writer.writerow([
-        'name', 'class', 'class_score', 'cleavage_sequence', 'cleavage_start', 'cleavage_stop', 'cleavage_score'
-    ])
+    with open(output_tsv, "w", newline="\n") as file:
+        writer = csv.writer(file, delimiter="\t")
 
-    for ind, sequence in enumerate(sequences):
-        name = sequence['name']
-        class_pred = class_predictions[ind]['class_predictions'][0]
-        cleavage_pred = cleavage_predictions[ind]['cleavage_prediction']
+        writer.writerow(
+            [
+                "name",
+                "class",
+                "class_score",
+                "cleavage_sequence",
+                "cleavage_start",
+                "cleavage_stop",
+                "cleavage_score",
+            ]
+        )
 
-        writer.writerow([
-            name,
-            class_pred['class'],
-            class_pred['score'],
-            cleavage_pred['sequence'],
-            cleavage_pred['start'],
-            cleavage_pred['stop'],
-            cleavage_pred['score']
-        ])
+        for ind, sequence in enumerate(sequences):
+            name = sequence["name"]
+            class_pred = class_predictions[ind]["class_predictions"][0]
+            cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
 
+            writer.writerow(
+                [
+                    name,
+                    class_pred["class"],
+                    class_pred["score"],
+                    cleavage_pred["sequence"],
+                    cleavage_pred["start"],
+                    cleavage_pred["stop"],
+                    cleavage_pred["score"],
+                ]
+            )
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>")
+        print(
+            "Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>"
+        )
         sys.exit(1)
 
     models_dir = sys.argv[1]

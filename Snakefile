@@ -6,11 +6,12 @@ from pathlib import Path
 ################################################################################
 
 # Retrieves the absolute path of the directory snakemake is launched in.
-# Used by DeepPeptide to simplify output file paths. 
+# Used by DeepPeptide to simplify output file paths.
 WORKING_DIRPATH = Path(os.getcwd())
 
+
 # Default pipeline configuration parameters are in the config file.
-# If you create a new yml file and use the --configfile flag, 
+# If you create a new yml file and use the --configfile flag,
 # options in that new file overwrite the defaults.
 configfile: "./config.yml"
 
@@ -45,8 +46,8 @@ rule filter_nt_contigs_to_short:
         """
 
 
-# TER TODO: Add a rule for sORF prediction, either once smallesm is developed, 
-#           when there is an accurate sORF rnasamba model, 
+# TER TODO: Add a rule for sORF prediction, either once smallesm is developed,
+#           when there is an accurate sORF rnasamba model,
 #           or using another tool from Singh & Roy.
 
 
