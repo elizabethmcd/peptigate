@@ -54,7 +54,7 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     with open(proteins_output_file, "w") as proteins_out, open(peptides_output_file, "w") as peptides_out:
         for protein_key, protein_info in data["PREDICTIONS"].items():
             protein_id = protein_key.split()[0][1:]  # Extract the ID part
-            peptides = protein_info.get("peptides", [])
+            peptides = protein_info.get("peptides")
             if peptides:  # Check if there are peptides
                 protein_sequence = sequences.get(protein_id)
                 if protein_sequence:  # If the protein sequence is found in the FASTA
