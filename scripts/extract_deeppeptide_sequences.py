@@ -1,3 +1,4 @@
+import argparse
 import json
 import sys
 from Bio import SeqIO
@@ -76,13 +77,15 @@ def main(json_file, fasta_file, proteins_output_file, peptides_output_file):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        print("Usage: python extract_deeppeptide_sequences.py <json> <fasta> <prot_out> <pep_out>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Extract peptide sequences from DeepPeptide JSON.')
 
-    json_file = sys.argv[1]
-    fasta_file = sys.argv[2]
-    proteins_output_file = sys.argv[3]
-    peptides_output_file = sys.argv[4]
+    # Add the arguments
+    parser.add_argument('json_file', type=str, help='The JSON file output by DeepPeptide.')
+    parser.add_argument('fasta_file', type=str, help='The protein FASTA file input to DeepPeptide.')
+    parser.add_argument('proteins_output_file', type=str, help='The output file path for proteins.')
+    parser.add_argument('peptides_output_file', type=str, help='The output file path for peptides.')
 
-    main(json_file, fasta_file, proteins_output_file, peptides_output_file)
+    # Execute the parse_args() method
+    args = parser.parse_args()
+
+    main(args.json_file, args.fasta_file, args.proteins_output_file, args.peptides_output_file)
