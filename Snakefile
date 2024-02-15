@@ -301,7 +301,7 @@ rule nrps_hmmsearch:
     """
     input:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
-        hmm=INPUT_DIR / "nrps/nrps.hmm",
+        hmm=INPUT_DIR / "models/nrps/nrps.hmm",
     output:
         txt=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.txt",
         tbltsv=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.tbltsv",
