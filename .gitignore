@@ -8,6 +8,7 @@ envs/src/**
 /demo/output/
 /demo/input/
 /logs
+cloned_repositories/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
