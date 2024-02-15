@@ -275,7 +275,7 @@ rule extract_deeppeptide_sequences:
         propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
         peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
     conda:
-        "envs/deeppeptide.yml"
+        "envs/biopython.yml"
     shell:
         """
         python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
