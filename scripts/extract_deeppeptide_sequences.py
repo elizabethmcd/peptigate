@@ -10,36 +10,69 @@ def read_fasta(fasta_file):
     return sequences
 
 
-def extract_peptide_sequences(data, fasta_file, genes_output_file, peptides_output_file):
+def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file):
     """
     Extract gene and peptide sequences based on the data dictionary and FASTA file,
     then write to separate files.
+
+    Extracts protein and peptide sequences based on the provided data dictionary and a FASTA file.
+    The data object is created from a JSON file output by deeppeptide.
+    The protein sequences are extracted from the FASTA file using the IDs found in the data dictionary.
+    Peptide sequences are then extracted from these protein sequences based on start and end 
+    positions specified for each peptide within the data dictionary. 
+    The extracted protein and peptide sequences are written to separate output files.
+
+    Parameters:
+    - data (dict): A dictionary containing prediction data, where each key is a protein ID and 
+      the associated value is another dictionary with details including peptides' start and end 
+      positions.
+    - fasta_file (str): The path to a FASTA file containing protein sequences.
+      This should be the same file used to make the DeepPeptide predictions.
+    - proteins_output_file (str): The path to the output file where protein sequences will be saved.
+      Each sequence is written in FASTA format with its ID as the header.
+    - peptides_output_file (str): The path to the output file where peptide sequences will be saved.
+      Peptide sequences are also written in FASTA format,
+      with headers indicating their source transcript ID and their start and end positions within
+      the protein sequence.
+
+    Returns:
+    None
+
+    Raises:
+    - FileNotFoundError: If the fasta_file does not exist or cannot be read.
+    - KeyError: If the expected keys are not found in the data dictionary.
+
+    Example usage:
+    extract_peptide_sequences(data={'PREDICTIONS': {'>1': {'peptides': [{'start': 1, 'end': 9}]}}},
+                              fasta_file='path/to/fasta_file.fasta',
+                              proteins_output_file='path/to/proteins_output.fasta',
+                              peptides_output_file='path/to/peptides_output.fasta')
     """
     sequences = read_fasta(fasta_file)
 
-    with open(genes_output_file, "w") as genes_out, open(peptides_output_file, "w") as peptides_out:
-        for transcript_key, transcript_info in data["PREDICTIONS"].items():
-            transcript_id = transcript_key.split()[0][1:]  # Extract the ID part
-            peptides = transcript_info.get("peptides", [])
+    with open(proteins_output_file, "w") as proteins_out, open(peptides_output_file, "w") as peptides_out:
+        for protein_key, protein_info in data["PREDICTIONS"].items():
+            protein_id = protein_key.split()[0][1:]  # Extract the ID part
+            peptides = protein_info.get("peptides", [])
             if peptides:  # Check if there are peptides
-                gene_sequence = sequences.get(transcript_id)
-                if gene_sequence:  # If the gene sequence is found in the FASTA
-                    genes_out.write(f">{transcript_id}\n{gene_sequence}\n")
+                protein_sequence = sequences.get(protein_id)
+                if protein_sequence:  # If the protein sequence is found in the FASTA
+                    proteins_out.write(f">{protein_id}\n{protein_sequence}\n")
                     for peptide in peptides:
                         start, end = peptide["start"], peptide["end"]
-                        peptide_sequence = gene_sequence[
+                        peptide_sequence = protein_sequence[
                             start - 1 : end
                         ]  # Extract peptide sequence
                         peptides_out.write(
-                            f">{transcript_id}_peptide_{start}_{end}\n{peptide_sequence}\n"
+                            f">{protein_id}_peptide_{start}_{end}\n{peptide_sequence}\n"
                         )
 
 
-def main(json_file, fasta_file, genes_output_file, peptides_output_file):
+def main(json_file, fasta_file, proteins_output_file, peptides_output_file):
     with open(json_file) as f:
         data = json.load(f)
 
-    extract_peptide_sequences(data, fasta_file, genes_output_file, peptides_output_file)
+    extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file)
 
 
 if __name__ == "__main__":
@@ -49,7 +82,7 @@ if __name__ == "__main__":
 
     json_file = sys.argv[1]
     fasta_file = sys.argv[2]
-    genes_output_file = sys.argv[3]
+    proteins_output_file = sys.argv[3]
     peptides_output_file = sys.argv[4]
 
-    main(json_file, fasta_file, genes_output_file, peptides_output_file)
+    main(json_file, fasta_file, proteins_output_file, peptides_output_file)
