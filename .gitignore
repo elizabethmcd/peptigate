@@ -4,11 +4,20 @@ envs/src/**
 # Snakemake-related folders and files
 .snakemake/
 /input/
-/output/
+/outputs/
 /demo/output/
 /demo/input/
 /logs
+benchmarks/
 cloned_repositories/
+inputs/models/datasets/ensembl/
+inputs/models/datasets/validation/
+inputs/models/nrps/antismash/
+inputs/models/nrps/nrps_motif_finder/
+inputs/models/nrps/pfam/
+inputs/reads2transcriptome_outputs/
+tmp_mmseqs2/
+sandbox/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -73,6 +82,9 @@ venv/
 
 # pyenv
 .python-version
+
+# R
+.Rhistory
 
 # OS
 .DS_Store
