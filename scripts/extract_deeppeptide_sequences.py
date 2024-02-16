@@ -2,6 +2,8 @@ import argparse
 import json
 
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 def read_fasta(fasta_file):

@@ -1,12 +1,13 @@
+import argparse
 import csv
 import sys
 import time
 from pathlib import Path
-import argparse
 
 import nlpprecursor
 from Bio import SeqIO
 from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from nlpprecursor.annotation.data import DatasetGenerator as ADG
 from nlpprecursor.classification.data import DatasetGenerator as CDG
 
