@@ -320,10 +320,11 @@ rule nrps_hmmsearch:
 ################################################################################
 
 # TER TODO: figure out if the NRPS results are significant and should be parsed and included
+# TER TODO: figure out if nlpprecursor results need to be filtered
 # TER TODO: add sORF predictions
 rule combine_peptide_predictions:
     input:
-        nrps=rules.nlpprecursor.output.peptide,
+        nlpprecursor=rules.nlpprecursor.output.peptide,
         deeppeptide=rules.extract_deeppeptide_sequences.peptide,
     output:
         peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa"
@@ -364,7 +365,7 @@ rule make_diamond_db_from_peptipedia_database:
 rule diamond_blastp_peptide_predictions_against_peptipedia_database:
     input:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
-        peptides=
+        peptides=rules.combine_peptide_predictions.output.peptide
     output:
         tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv"
     params:
