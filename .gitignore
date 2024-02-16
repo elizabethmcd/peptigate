@@ -10,6 +10,7 @@ envs/src/**
 /logs
 benchmarks/
 cloned_repositories/
+inputs/databases/
 inputs/models/datasets/ensembl/
 inputs/models/datasets/validation/
 inputs/models/nlpprecursor/
