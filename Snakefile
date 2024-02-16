@@ -222,14 +222,15 @@ rule nlpprecursor:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         model=rules.download_nlpprecursor_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_predictions.tsv",
+        peptide=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_peptides.fasta",
     params:
         modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
         """
-        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
+        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output.tsv} {output.peptide}
         """
 
 
@@ -314,6 +315,65 @@ rule nrps_hmmsearch:
         hmmsearch -o {output.txt} --tblout {output.tbltsv} --domtblout {output.domtsv} --cpu {threads} {input.hmm} {input.faa} 
         """
 
+################################################################################
+## Combine peptide predictions
+################################################################################
+
+# TER TODO: figure out if the NRPS results are significant and should be parsed and included
+# TER TODO: add sORF predictions
+rule combine_peptide_predictions:
+    input:
+        nrps=rules.nlpprecursor.output.peptide,
+        deeppeptide=rules.extract_deeppeptide_sequences.peptide,
+    output:
+        peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa"
+    shell:
+        """
+        cat {input} > {output.peptide}
+        """
+
+
+################################################################################
+## Charaterize & annotate predicted peptide sequences
+################################################################################
+
+# TODO: figure out what the nlpprecursor scores are and if the file needs to be filtered.
+#       ...annotate other things that need to be done (deepsig, pfeature, c3pred, etc)
+
+rule download_peptipedia_database:
+    output:
+        db=INPUT_DIR / "databases/peptipedia.fasta.gz"
+    shell:
+        """
+        curl -JLo {output} https://osf.io/dzycu/download 
+        """
+
+rule make_diamond_db_from_peptipedia_database:
+    input:
+        db=rules.download_peptipedia_database.output.db
+    output:
+        db=OUTPUT_DIR / "annotation/peptipedia/0_diabmond_db/peptipedia.dmnd"
+    params:
+        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia"
+    conda: "envs/diamond.yml"
+    shell:
+        """
+        diamond makedb --in {input.db} -d {params.dbprefix}
+        """
+
+rule diamond_blastp_peptide_predictions_against_peptipedia_database:
+    input:
+        db=rules.make_diamond_db_from_peptipedia_database.output.db,
+        peptides=
+    output:
+        tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv"
+    params:
+        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia"
+    conda: "envs/dimaond.yml"
+    shell:
+        """
+        diamond blastp -d {params.db} -q {input.peptides} -o {output.tsv}
+        """    
 
 ################################################################################
 ## Target rule all
