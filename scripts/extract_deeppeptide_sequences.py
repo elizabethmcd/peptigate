@@ -36,7 +36,7 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
       Each sequence is written in FASTA format with its ID as the header.
     - peptides_output_file (str): The path to the output file where peptide sequences will be saved.
       Peptide sequences are also written in FASTA format, with headers indicating their source ID,
-      start and end positions in the protein sequence, and that DeepPeptide was the source of the 
+      start and end positions in the protein sequence, and that DeepPeptide was the source of the
       annotation.
 
     Returns:
@@ -54,8 +54,8 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     """
     sequences = read_fasta(fasta_file)
 
-    protein_records = []  
-    peptide_records = [] 
+    protein_records = []
+    peptide_records = []
 
     for protein_key, protein_info in data["PREDICTIONS"].items():
         protein_id = protein_key.split()[0][1:]  # Extract the ID part
@@ -63,13 +63,17 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
         if peptides:  # Check if there are peptides
             protein_sequence = sequences.get(protein_id)
             if protein_sequence:  # If the protein sequence is found in the FASTA
-                protein_records.append(SeqRecord(Seq(protein_sequence), id=protein_id, description=""))
+                protein_records.append(
+                    SeqRecord(Seq(protein_sequence), id=protein_id, description="")
+                )
 
                 for peptide in peptides:
                     start, end = peptide["start"], peptide["end"]
-                    peptide_sequence = protein_sequence[start - 1:end]  # Extract peptide sequence
+                    peptide_sequence = protein_sequence[start - 1 : end]  # Extract peptide sequence
                     peptide_id = f"{protein_id}_peptide_{start}_{end}_deeppeptide"
-                    peptide_records.append(SeqRecord(Seq(peptide_sequence), id=peptide_id, description=""))
+                    peptide_records.append(
+                        SeqRecord(Seq(peptide_sequence), id=peptide_id, description="")
+                    )
 
     with open(proteins_output_file, "w") as proteins_out:
         SeqIO.write(protein_records, proteins_out, "fasta")

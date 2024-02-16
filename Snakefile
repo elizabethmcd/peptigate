@@ -325,6 +325,7 @@ rule nrps_hmmsearch:
 # TER TODO: figure out if nlpprecursor results need to be filtered
 # TER TODO: add sORF predictions
 
+
 rule combine_peptide_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.peptide,
@@ -358,7 +359,7 @@ rule make_diamond_db_from_peptipedia_database:
     input:
         db=rules.download_peptipedia_database.output.db,
     output:
-        db=OUTPUT_DIR / "annotation/peptipedia/0_diabmond_db/peptipedia.dmnd",
+        db=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia.dmnd",
     params:
         dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
     conda:
@@ -378,10 +379,10 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
     params:
         dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
     conda:
-        "envs/dimaond.yml"
+        "envs/diamond.yml"
     shell:
         """
-        diamond blastp -d {params.db} -q {input.peptide} -o {output.tsv}
+        diamond blastp -d {params.dbprefix} -q {input.peptide} -o {output.tsv} --header simple
         """
 
 
@@ -397,7 +398,6 @@ rule all:
         rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
         rules.nrps_hmmsearch.output.tbltsv,
-        rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
 
 
 rule sORF:
@@ -417,6 +417,7 @@ rule cleavage:
     input:
         rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
+        rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
 
 
 rule nrps:

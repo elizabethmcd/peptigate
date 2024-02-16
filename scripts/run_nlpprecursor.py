@@ -110,8 +110,13 @@ def main(models_dir, multifasta_file, output_tsv, output_fasta):
                 ]
             )
 
-
-            peptide_id = f"{name}_{class_pred['class']}_{cleavage_pred['start']}_{cleavage_pred['stop']}_nlpprecursor"
+            peptide_id = (
+                f"{name}_"
+                f"{class_pred['class']}_"
+                f"{cleavage_pred['start']}_"
+                f"{cleavage_pred['stop']}_"
+                "nlpprecursor"
+            )
             seq_record = SeqRecord(Seq(cleavage_pred["sequence"]), id=peptide_id, description="")
             fasta_records.append(seq_record)
 
@@ -119,11 +124,11 @@ def main(models_dir, multifasta_file, output_tsv, output_fasta):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run NLPprecursor prediction and output results.')
-    parser.add_argument('models_dir', type=str, help='Directory containing model files.')
-    parser.add_argument('multifasta_file', type=str, help='Path to input protein multiFASTA file.')
-    parser.add_argument('output_tsv', type=str, help='Path to output TSV file.')
-    parser.add_argument('output_fasta', type=str, help='Path to output peptide multiFASTA file.')
+    parser = argparse.ArgumentParser(description="Run NLPprecursor prediction and output results.")
+    parser.add_argument("models_dir", type=str, help="Directory containing model files.")
+    parser.add_argument("multifasta_file", type=str, help="Path to input protein multiFASTA file.")
+    parser.add_argument("output_tsv", type=str, help="Path to output TSV file.")
+    parser.add_argument("output_fasta", type=str, help="Path to output peptide multiFASTA file.")
 
     args = parser.parse_args()
 
