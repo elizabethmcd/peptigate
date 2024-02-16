@@ -342,9 +342,6 @@ rule combine_peptide_predictions:
 ## Charaterize & annotate predicted peptide sequences
 ################################################################################
 
-# TODO: figure out what the nlpprecursor scores are and if the file needs to be filtered.
-#       ...annotate other things that need to be done (deepsig, pfeature, c3pred, etc)
-
 
 rule download_peptipedia_database:
     output:
@@ -382,7 +379,8 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         "envs/diamond.yml"
     shell:
         """
-        diamond blastp -d {params.dbprefix} -q {input.peptide} -o {output.tsv} --header simple
+        diamond blastp -d {params.dbprefix} -q {input.peptide} -o {output.tsv} --header simple \
+         --outfmt 6 qseqid sseqid pident length qlen slen mismatch gapopen qstart qend sstart send evalue bitscore
         """
 
 
