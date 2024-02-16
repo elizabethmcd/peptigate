@@ -385,10 +385,10 @@ rule all:
     default_target: True
     input:
         rules.rnasamba.output.tsv,
-        rules.nlpprecursor.output.tsv,
+        rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
         rules.nrps_hmmsearch.output.tbltsv,
-
+        rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
 
 rule sORF:
     """
@@ -405,7 +405,7 @@ rule cleavage:
     snakemake cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.nlpprecursor.output.tsv,
+        rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
 
 
