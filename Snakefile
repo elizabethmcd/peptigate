@@ -315,9 +315,11 @@ rule nrps_hmmsearch:
         hmmsearch -o {output.txt} --tblout {output.tbltsv} --domtblout {output.domtsv} --cpu {threads} {input.hmm} {input.faa} 
         """
 
+
 ################################################################################
 ## Combine peptide predictions
 ################################################################################
+
 
 # TER TODO: figure out if the NRPS results are significant and should be parsed and included
 # TER TODO: figure out if nlpprecursor results need to be filtered
@@ -327,7 +329,7 @@ rule combine_peptide_predictions:
         nlpprecursor=rules.nlpprecursor.output.peptide,
         deeppeptide=rules.extract_deeppeptide_sequences.peptide,
     output:
-        peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa"
+        peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa",
     shell:
         """
         cat {input} > {output.peptide}
@@ -341,40 +343,46 @@ rule combine_peptide_predictions:
 # TODO: figure out what the nlpprecursor scores are and if the file needs to be filtered.
 #       ...annotate other things that need to be done (deepsig, pfeature, c3pred, etc)
 
+
 rule download_peptipedia_database:
     output:
-        db=INPUT_DIR / "databases/peptipedia.fasta.gz"
+        db=INPUT_DIR / "databases/peptipedia.fasta.gz",
     shell:
         """
         curl -JLo {output} https://osf.io/dzycu/download 
         """
 
+
 rule make_diamond_db_from_peptipedia_database:
     input:
-        db=rules.download_peptipedia_database.output.db
+        db=rules.download_peptipedia_database.output.db,
     output:
-        db=OUTPUT_DIR / "annotation/peptipedia/0_diabmond_db/peptipedia.dmnd"
+        db=OUTPUT_DIR / "annotation/peptipedia/0_diabmond_db/peptipedia.dmnd",
     params:
-        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia"
-    conda: "envs/diamond.yml"
+        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+    conda:
+        "envs/diamond.yml"
     shell:
         """
         diamond makedb --in {input.db} -d {params.dbprefix}
         """
 
+
 rule diamond_blastp_peptide_predictions_against_peptipedia_database:
     input:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
-        peptides=rules.combine_peptide_predictions.output.peptide
+        peptides=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv"
+        tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia"
-    conda: "envs/dimaond.yml"
+        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+    conda:
+        "envs/dimaond.yml"
     shell:
         """
         diamond blastp -d {params.db} -q {input.peptides} -o {output.tsv}
-        """    
+        """
+
 
 ################################################################################
 ## Target rule all
@@ -389,6 +397,7 @@ rule all:
         rules.extract_deeppeptide_sequences.output.peptide,
         rules.nrps_hmmsearch.output.tbltsv,
         rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
+
 
 rule sORF:
     """
