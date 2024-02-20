@@ -339,7 +339,7 @@ rule combine_peptide_predictions:
 
 
 ################################################################################
-## Charaterize & annotate predicted peptide sequences
+## Compare against known peptides
 ################################################################################
 
 
@@ -384,6 +384,27 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         """
 
 
+################################################################################
+## Charaterize & annotate predicted peptide sequences
+################################################################################
+
+rule deepsig:
+    '''
+    This rule uses deepsig to predict signal peptides in proteins using deep learning.
+    '''
+    input:
+        peptide=rules.combine_peptide_predictions.output.peptide,
+    output:
+        tsv=OUTPUT_DIR / "annotation/deepsig/deepsig.tsv" 
+    conda: "envs/deepsig.yml"
+    shell:
+        """
+        deepsig -f {input} -o {output} -k euk
+        """
+
+rule pfeature:
+
+rule c3pred:
 ################################################################################
 ## Target rule all
 ################################################################################
