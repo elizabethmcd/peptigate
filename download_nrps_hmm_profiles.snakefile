@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-# This snakefile downloads and formats hidden markov model (HMM) profiles for non-ribosomal peptide 
+# This snakefile downloads and formats hidden markov model (HMM) profiles for non-ribosomal peptide
 # synthetase (NRPS) annotation.
 INPUT_DIR = Path("inputs/models/")
 # Note input and output directories are the same.
