@@ -80,15 +80,9 @@ def characterize_peptides(input_file, output_file):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Characterize peptides from a multi-fasta file."
-    )
-    parser.add_argument(
-        "input_file", type=str, help="Input multi-fasta file of amino acids"
-    )
-    parser.add_argument(
-        "output_file", type=str, help="Output TSV file to write the results"
-    )
+    parser = argparse.ArgumentParser(description="Characterize peptides from a multi-fasta file.")
+    parser.add_argument("input_file", type=str, help="Input multi-fasta file of amino acids")
+    parser.add_argument("output_file", type=str, help="Output TSV file to write the results")
 
     args = parser.parse_args()
 
