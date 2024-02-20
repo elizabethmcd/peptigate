@@ -329,29 +329,29 @@ rule all:
         rules.nrps_hmmsearch.output.tbltsv,
 
 
-rule sORF:
+rule predict_sORF:
     """
     Defines a target rule for sORF prediction so a user can run only sORF prediction.
-    snakemake sORF --software-deployment-method conda -j 8 
+    snakemake predict_sORF --software-deployment-method conda -j 8 
     """
     input:
         rules.rnasamba.output.tsv,
 
 
-rule cleavage:
+rule predict_cleavage:
     """
     Defines a target rule for cleavage prediction so a user can run only cleavage prediction.
-    snakemake cleavage --software-deployment-method conda -j 8 
+    snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
         rules.nlpprecursor.output.tsv,
         rules.extract_deeppeptide_sequences.output.peptide,
 
 
-rule nrps:
+rule predict_nrps:
     """
     Defines a target rule for nonribosomal peptide synthetase prediction so a user can run only NRPS prediction if they desire.
-    snakemake nrps --software-deployment-method conda -j 8 
+    snakemake predict_nrps --software-deployment-method conda -j 8 
     """
     input:
         rules.nrps_hmmsearch.output.tbltsv,
