@@ -7,7 +7,7 @@ from Bio import SeqIO
 
 def characterize_peptides(input_file, output_file):
     """
-    Processes a multi-FASTA file of peptides, calculating physicochemical properties and descriptors
+    Processes a multi-FASTA file of peptides, calculates physicochemical properties and descriptors
     for each peptide, and writes the results to an output TSV file.
 
     This function uses the `peptides` library to calculate peptide properties like aliphatic index,
@@ -30,7 +30,6 @@ def characterize_peptides(input_file, output_file):
         tsv_writer.writerow(
             [
                 "id",
-                "sequence",
                 "aliphatic_index",
                 "boman_index",
                 "charge",
@@ -62,7 +61,6 @@ def characterize_peptides(input_file, output_file):
             tsv_writer.writerow(
                 [
                     record.id,
-                    peptide_sequence,
                     aliphatic_index,
                     boman_index,
                     charge,
