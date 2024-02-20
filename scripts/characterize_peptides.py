@@ -1,26 +1,27 @@
 import argparse
-from Bio import SeqIO
-import peptides
 import csv
+
+import peptides
+from Bio import SeqIO
 
 
 def characterize_peptides(input_file, output_file):
     """
-    Processes a multi-FASTA file of peptides, calculating physicochemical properties and descriptors 
+    Processes a multi-FASTA file of peptides, calculating physicochemical properties and descriptors
     for each peptide, and writes the results to an output TSV file.
 
     This function uses the `peptides` library to calculate peptide properties like aliphatic index,
     boman index, charge, hydrophobicity, instability index, isoelectric point, molecular weight, and
     z-scales (lipophilicity, steric properties, electronic properties, etc.).
     It assumes default arguments for all peptide measurements as defined in the `peptides` library.
-    For a comprehensive list of available measurements and their optional arguments, refer to the 
+    For a comprehensive list of available measurements and their optional arguments, refer to the
     `peptides` library documentation: https://peptides.readthedocs.io.
 
     Parameters:
     - input_file (str): Path to the input FASTA file containing amino acid sequences of peptides.
     - output_file (str): Path to the output TSV file where the peptide properties will be written.
 
-    Each row in the output TSV file includes the peptide ID, sequence, and calculated properties. 
+    Each row in the output TSV file includes the peptide ID, sequence, and calculated properties.
 
     Note: This function writes directly to the output file and does not return any value.
     """
@@ -53,11 +54,11 @@ def characterize_peptides(input_file, output_file):
             boman_index = peptide_sequence.boman()
             charge = peptide_sequence.charge()
             hydrophobicity = peptide_sequence.hydrophobicity()
-            instability_index = peptides.instability_index(peptide_sequence)
-            isoelectric_point = peptides.isoelectric_point(peptide_sequence)
+            instability_index = peptide_sequence.instability_index()
+            isoelectric_point = peptide_sequence.isoelectric_point()
             molecular_weight = peptide_sequence.molecular_weight()
             physical_descriptors = peptide_sequence.physical_descriptors()
-            zcales = peptide_sequence.z_scales()
+            zscales = peptide_sequence.z_scales()
             tsv_writer.writerow(
                 [
                     record.id,
@@ -81,9 +82,15 @@ def characterize_peptides(input_file, output_file):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Characterize peptides from a multi-fasta file.")
-    parser.add_argument("input_file", type=str, help="Input multi-fasta file of amino acids")
-    parser.add_argument("output_file", type=str, help="Output TSV file to write the results")
+    parser = argparse.ArgumentParser(
+        description="Characterize peptides from a multi-fasta file."
+    )
+    parser.add_argument(
+        "input_file", type=str, help="Input multi-fasta file of amino acids"
+    )
+    parser.add_argument(
+        "output_file", type=str, help="Output TSV file to write the results"
+    )
 
     args = parser.parse_args()
 
