@@ -402,9 +402,17 @@ rule deepsig:
         deepsig -f {input} -o {output} -k euk
         """
 
-rule pfeature:
+rule characterize_peptides:
+    input: 
+        peptide=rules.combine_peptide_predictions.output.peptide,
+    output:
+        tsv=OUTPUT_DIR / "annotation/characteristics/peptide_characteristics.tsv" 
+    conda: "envs/peptides.yml"
+    shell:
+        """
+        python scripts/characterize_peptides.py {input.peptide} {output.tsv}
+        """
 
-rule c3pred:
 ################################################################################
 ## Target rule all
 ################################################################################
