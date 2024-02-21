@@ -11,12 +11,7 @@ envs/src/**
 benchmarks/
 cloned_repositories/
 inputs/databases/
-inputs/models/datasets/ensembl/
-inputs/models/datasets/validation/
-inputs/models/nlpprecursor/
-inputs/models/nrps/antismash/
-inputs/models/nrps/nrps_motif_finder/
-inputs/models/nrps/pfam/
+/inputs/models/
 inputs/reads2transcriptome_outputs/
 tmp_mmseqs2/
 sandbox/
