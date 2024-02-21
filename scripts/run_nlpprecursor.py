@@ -1,3 +1,4 @@
+import argparse
 import csv
 import sys
 import time
@@ -5,6 +6,8 @@ from pathlib import Path
 
 import nlpprecursor
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from nlpprecursor.annotation.data import DatasetGenerator as ADG
 from nlpprecursor.classification.data import DatasetGenerator as CDG
 
@@ -44,7 +47,7 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
                 raise  # Re-raise the last exception if out of attempts
 
 
-def main(models_dir, multifasta_file, output_tsv):
+def main(models_dir, input_fasta, output_tsv, output_fasta):
     models_dir = Path(models_dir)
 
     class_model_dir = models_dir / "classification"
@@ -57,8 +60,8 @@ def main(models_dir, multifasta_file, output_tsv):
 
     sequences = []
 
-    # Read sequences from the multifasta file
-    for record in SeqIO.parse(multifasta_file, "fasta"):
+    # Read sequences from the input fasta file
+    for record in SeqIO.parse(input_fasta, "fasta"):
         sequences.append({"sequence": str(record.seq), "name": record.id})
 
     # Predict class and cleavage for each sequence
@@ -71,7 +74,9 @@ def main(models_dir, multifasta_file, output_tsv):
     cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, sequences)
 
     # The output of nlpprecursor predictions are in JSON format.
-    # The code below parses the JSON into a TSV format.
+    # The code below parses the JSON into TSV and FASTA format.
+
+    fasta_records = []
 
     with open(output_tsv, "w", newline="\n") as file:
         writer = csv.writer(file, delimiter="\t")
@@ -105,14 +110,26 @@ def main(models_dir, multifasta_file, output_tsv):
                 ]
             )
 
+            peptide_id = (
+                f"{name}_"
+                f"{class_pred['class']}_"
+                f"{cleavage_pred['start']}_"
+                f"{cleavage_pred['stop']}_"
+                "nlpprecursor"
+            )
+            seq_record = SeqRecord(Seq(cleavage_pred["sequence"]), id=peptide_id, description="")
+            fasta_records.append(seq_record)
+
+    SeqIO.write(fasta_records, output_fasta, "fasta")
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: python run_nlpprecursor.py <models_dir> <multifasta_file> <output_tsv>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Run NLPprecursor prediction and output results.")
+    parser.add_argument("models_dir", type=str, help="Directory containing model files.")
+    parser.add_argument("input_fasta", type=str, help="Path to input protein multiFASTA file.")
+    parser.add_argument("output_tsv", type=str, help="Path to output TSV file.")
+    parser.add_argument("output_fasta", type=str, help="Path to output peptide multiFASTA file.")
 
-    models_dir = sys.argv[1]
-    multifasta_file = sys.argv[2]
-    output_tsv = sys.argv[3]
+    args = parser.parse_args()
 
-    main(models_dir, multifasta_file, output_tsv)
+    main(args.models_dir, args.input_fasta, args.output_tsv, args.output_fasta)

@@ -222,14 +222,15 @@ rule nlpprecursor:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         model=rules.download_nlpprecursor_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_ripp_predictions.tsv",
+        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_predictions.tsv",
+        peptide=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_peptides.fasta",
     params:
         modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
         """
-        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output}
+        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output.tsv} {output.peptide}
         """
 
 
@@ -316,6 +317,80 @@ rule nrps_hmmsearch:
 
 
 ################################################################################
+## Combine peptide predictions
+################################################################################
+
+
+# TER TODO: figure out if the NRPS results are significant and should be parsed and included
+# TER TODO: figure out if nlpprecursor results need to be filtered
+# TER TODO: add sORF predictions
+
+
+rule combine_peptide_predictions:
+    input:
+        nlpprecursor=rules.nlpprecursor.output.peptide,
+        deeppeptide=rules.extract_deeppeptide_sequences.output.peptide,
+    output:
+        peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa",
+    shell:
+        """
+        cat {input} > {output.peptide}
+        """
+
+
+################################################################################
+## Charaterize & annotate predicted peptide sequences
+################################################################################
+
+
+rule download_peptipedia_database:
+    """
+    The peptipedia database includes sequences from 66 peptide databases.
+    It was last updated in 01/2024.
+    We selected this database because it has collected the most peptides in a single location and 
+    done some quality control on those sequences.
+    """
+    output:
+        db=INPUT_DIR / "databases/peptipedia.fasta.gz",
+    shell:
+        """
+        curl -JLo {output} https://osf.io/dzycu/download 
+        """
+
+
+rule make_diamond_db_from_peptipedia_database:
+    input:
+        db=rules.download_peptipedia_database.output.db,
+    output:
+        db=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia.dmnd",
+    params:
+        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+    conda:
+        "envs/diamond.yml"
+    shell:
+        """
+        diamond makedb --in {input.db} -d {params.dbprefix}
+        """
+
+
+rule diamond_blastp_peptide_predictions_against_peptipedia_database:
+    input:
+        db=rules.make_diamond_db_from_peptipedia_database.output.db,
+        peptide=rules.combine_peptide_predictions.output.peptide,
+    output:
+        tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv",
+    params:
+        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+    conda:
+        "envs/diamond.yml"
+    shell:
+        """
+        diamond blastp -d {params.dbprefix} -q {input.peptide} -o {output.tsv} --header simple \
+         --outfmt 6 qseqid sseqid pident length qlen slen mismatch gapopen qstart qend sstart send evalue bitscore
+        """
+
+
+################################################################################
 ## Target rule all
 ################################################################################
 
@@ -324,7 +399,7 @@ rule all:
     default_target: True
     input:
         rules.rnasamba.output.tsv,
-        rules.nlpprecursor.output.tsv,
+        rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
         rules.nrps_hmmsearch.output.tbltsv,
 
@@ -344,8 +419,9 @@ rule predict_cleavage:
     snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.nlpprecursor.output.tsv,
+        rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
+        rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
 
 
 rule predict_nrps:

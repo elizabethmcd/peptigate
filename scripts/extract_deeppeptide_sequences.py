@@ -2,6 +2,8 @@ import argparse
 import json
 
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 def read_fasta(fasta_file):
@@ -33,9 +35,9 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     - proteins_output_file (str): The path to the output file where protein sequences will be saved.
       Each sequence is written in FASTA format with its ID as the header.
     - peptides_output_file (str): The path to the output file where peptide sequences will be saved.
-      Peptide sequences are also written in FASTA format,
-      with headers indicating their source transcript ID and their start and end positions within
-      the protein sequence.
+      Peptide sequences are also written in FASTA format, with headers indicating their source ID,
+      start and end positions in the protein sequence, and that DeepPeptide was the source of the
+      annotation.
 
     Returns:
     None
@@ -52,24 +54,32 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     """
     sequences = read_fasta(fasta_file)
 
-    with open(proteins_output_file, "w") as proteins_out, open(
-        peptides_output_file, "w"
-    ) as peptides_out:
-        for protein_key, protein_info in data["PREDICTIONS"].items():
-            protein_id = protein_key.split()[0][1:]  # Extract the ID part
-            peptides = protein_info.get("peptides")
-            if peptides:  # Check if there are peptides
-                protein_sequence = sequences.get(protein_id)
-                if protein_sequence:  # If the protein sequence is found in the FASTA
-                    proteins_out.write(f">{protein_id}\n{protein_sequence}\n")
-                    for peptide in peptides:
-                        start, end = peptide["start"], peptide["end"]
-                        peptide_sequence = protein_sequence[
-                            start - 1 : end
-                        ]  # Extract peptide sequence
-                        peptides_out.write(
-                            f">{protein_id}_peptide_{start}_{end}\n{peptide_sequence}\n"
-                        )
+    protein_records = []
+    peptide_records = []
+
+    for protein_key, protein_info in data["PREDICTIONS"].items():
+        protein_id = protein_key.split()[0][1:]  # Extract the ID part
+        peptides = protein_info.get("peptides")
+        if peptides:  # Check if there are peptides
+            protein_sequence = sequences.get(protein_id)
+            if protein_sequence:  # If the protein sequence is found in the FASTA
+                protein_records.append(
+                    SeqRecord(Seq(protein_sequence), id=protein_id, description="")
+                )
+
+                for peptide in peptides:
+                    start, end = peptide["start"], peptide["end"]
+                    peptide_sequence = protein_sequence[start - 1 : end]  # Extract peptide sequence
+                    peptide_id = f"{protein_id}_peptide_{start}_{end}_deeppeptide"
+                    peptide_records.append(
+                        SeqRecord(Seq(peptide_sequence), id=peptide_id, description="")
+                    )
+
+    with open(proteins_output_file, "w") as proteins_out:
+        SeqIO.write(protein_records, proteins_out, "fasta")
+
+    with open(peptides_output_file, "w") as peptides_out:
+        SeqIO.write(peptide_records, peptides_out, "fasta")
 
 
 def main(json_file, fasta_file, proteins_output_file, peptides_output_file):
