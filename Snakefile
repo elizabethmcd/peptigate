@@ -423,8 +423,27 @@ rule characterize_peptides:
         python scripts/characterize_peptides.py {input.peptide} {output.tsv}
         """
 
-AUTOPEPTIDEML_MODEL_NAMES = ['AB', 'ACE', 'ACP', 'AF',  'AMAP',  'AMP',  'AOX', 'APP',  'AV',  
-                             'BBP',  'DPPIV',  'MRSA',  'Neuro',  'QS', 'TOX',  'TTCA']
+
+AUTOPEPTIDEML_MODEL_NAMES = [
+    "AB",
+    "ACE",
+    "ACP",
+    "AF",
+    "AMAP",
+    "AMP",
+    "AOX",
+    "APP",
+    "AV",
+    "BBP",
+    "DPPIV",
+    "MRSA",
+    "Neuro",
+    "QS",
+    "TOX",
+    "TTCA",
+]
+
+
 rule run_autopeptideml:
     """
     AutoPeptideML predicts the bioactivity of a peptide based on user-supplied models.
@@ -446,17 +465,20 @@ rule run_autopeptideml:
         # They said they're working on uploading them.
         # Once they're available, I need to add a rule to download them and update the input here
         # to be the rules syntax
-        model=INPUT_DIR / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json"
+        model=INPUT_DIR
+        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
     output:
         tsv=OUTPUT_DIR / "annotation/autopeptideml/autopeptideml_{autopeptideml_model_name}.tsv",
     params:
-        modelsdir=INPUT_DIR / "models/autopeptideml/HPO_NegSearch_HP/" 
+        modelsdir=INPUT_DIR / "models/autopeptideml/HPO_NegSearch_HP/",
     conda:
         "envs/autopeptideml.yml"
     shell:
         """
         python scripts/run_autopeptideml.py --input_fasta {input.peptide} --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble --model_name {wildcards.autopeptideml_model_name} --output_tsv {output.tsv}
         """
+
+
 ################################################################################
 ## Target rule all
 ################################################################################
@@ -491,7 +513,10 @@ rule predict_cleavage:
         rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         rules.run_deepsig.output.tsv,
         rules.characterize_peptides.output.tsv,
-        expand(rules.run_autopeptideml.output.tsv, autopeptideml_model_name = AUTOPEPTIDEML_MODEL_NAMES)
+        expand(
+            rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
+        ),
+
 
 rule predict_nrps:
     """

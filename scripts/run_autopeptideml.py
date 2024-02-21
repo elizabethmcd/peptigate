@@ -1,10 +1,12 @@
+import argparse
 import os
 from pathlib import Path
-import argparse
-from Bio import SeqIO
+
 import pandas as pd
 from autopeptideml.autopeptideml import AutoPeptideML
 from autopeptideml.utils.embeddings import RepresentationEngine
+from Bio import SeqIO
+
 
 def read_fasta(input_fasta):
     """
@@ -21,8 +23,10 @@ def read_fasta(input_fasta):
         sequences.append({"ID": seq_record.id, "sequence": str(seq_record.seq)})
     return pd.DataFrame(sequences)
 
-def predict_sequences(df, model_folder, model_name, threads = 6, seed = 42, batch_size = 64, 
-                      delete = True, tmp_dirname = "tmp"):
+
+def predict_sequences(
+    df, model_folder, model_name, threads=6, seed=42, batch_size=64, delete=True, tmp_dirname="tmp"
+):
     """
     Predicts peptide sequence bioactivity using AutoPeptideML and returns the predictions DataFrame.
 
@@ -42,15 +46,18 @@ def predict_sequences(df, model_folder, model_name, threads = 6, seed = 42, batc
     autopeptideml = AutoPeptideML(verbose=True, threads=threads, seed=seed)
     representation_engine = RepresentationEngine(model="esm2-8m", batch_size=batch_size)
 
-    predictions = autopeptideml.predict(df=df, re=representation_engine, ensemble_path=model_folder, outputdir=tmp_dirname)
-    predictions.rename(columns={'prediction': model_name}, inplace=True)
+    predictions = autopeptideml.predict(
+        df=df, re=representation_engine, ensemble_path=model_folder, outputdir=tmp_dirname
+    )
+    predictions.rename(columns={"prediction": model_name}, inplace=True)
     if delete:
         # autopeptideml writes prediction dataframe with uninformative column names to a
         # user-specified outputdir. This function specifies that folder as a temporary directory.
         # When delete == True, this function removes the output file written there.
         tmp_dirname = Path(tmp_dirname)
-        os.remove(tmp_dirname / "predictions.csv" )
+        os.remove(tmp_dirname / "predictions.csv")
     return predictions
+
 
 def save_predictions(predictions, output_path):
     """
@@ -60,20 +67,22 @@ def save_predictions(predictions, output_path):
     predictions (pd.DataFrame): DataFrame with predictions produced by predicut_sequences().
     output_path (str): Path to save the TSV file.
     """
-    predictions.to_csv(output_path, sep='\t', index=False)
+    predictions.to_csv(output_path, sep="\t", index=False)
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Predict sequences using AutoPeptideML.')
-    parser.add_argument('--input_fasta', required=True, help='Path to the FASTA file.')
-    parser.add_argument('--model_folder', required=True, help='Path to the model folder.')
-    parser.add_argument('--model_name', required=True, help='Name of the model.')
-    parser.add_argument('--output_tsv', required=True, help='Path to the output TSV file.')
-    
+    parser = argparse.ArgumentParser(description="Predict sequences using AutoPeptideML.")
+    parser.add_argument("--input_fasta", required=True, help="Path to the FASTA file.")
+    parser.add_argument("--model_folder", required=True, help="Path to the model folder.")
+    parser.add_argument("--model_name", required=True, help="Name of the model.")
+    parser.add_argument("--output_tsv", required=True, help="Path to the output TSV file.")
+
     args = parser.parse_args()
-    
+
     df = read_fasta(args.input_fasta)
     predictions = predict_sequences(df, args.model_folder, args.model_name)
     save_predictions(predictions, args.output_tsv)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
