@@ -344,6 +344,12 @@ rule combine_peptide_predictions:
 
 
 rule download_peptipedia_database:
+    """
+    The peptipedia database includes sequences from 66 peptide databases.
+    It was last updated in 01/2024.
+    We selected this database because it has collected the most peptides in a single location and 
+    done some quality control on those sequences.
+    """
     output:
         db=INPUT_DIR / "databases/peptipedia.fasta.gz",
     shell:
