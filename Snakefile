@@ -287,7 +287,7 @@ rule extract_deeppeptide_sequences:
         "envs/biopython.yml"
     shell:
         """
-        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide} {output.predictions}
+        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide} {output.tsv}
         """
 
 
