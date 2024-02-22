@@ -282,11 +282,12 @@ rule extract_deeppeptide_sequences:
     output:
         propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
         peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
+        tsv=OUTPUT_DIR / "cleavage/deeppeptide/predictions.tsv"
     conda:
         "envs/biopython.yml"
     shell:
         """
-        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide}
+        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide} {output.predictions}
         """
 
 
@@ -478,6 +479,30 @@ rule run_autopeptideml:
         python scripts/run_autopeptideml.py --input_fasta {input.peptide} --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble --model_name {wildcards.autopeptideml_model_name} --output_tsv {output.tsv}
         """
 
+rule combine_peptide_annotations:
+    input:
+        nlpprecursor=rules.nlpprecursor.output.tsv,
+        deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
+        autopeptideml=expand(
+            rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
+        ),
+        deepsig=rules.run_deepsig.output.tsv,
+        peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
+        characteristics=rules.characterize_peptides.output.tsv,
+    output:
+        tsv=OUTPUT_DIR / "annotation/peptide_annotations.tsv"
+    params: autopeptidemldir=OUTPUT_DIR / "annotation/autopeptideml/"
+    conda: "envs/tidyverse.yml"
+    shell:
+        """
+        Rscript scripts/combine_peptide_annotations.R --nlpprecursor_path {input.nlpprecursor} \
+            --deeppeptide_path {input.deeppeptide} \
+            --autopeptideml_dir {params.autopeptidemldir} \
+            --deepsig_path {input.deepsig} \
+            --peptipedia_path {input.peptipedia} \
+            --characteristics_path {input.characteristics} \
+            --output_path {output.tsv}
+        """
 
 ################################################################################
 ## Target rule all
@@ -508,15 +533,7 @@ rule predict_cleavage:
     snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.nlpprecursor.output.peptide,
-        rules.extract_deeppeptide_sequences.output.peptide,
-        rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
-        rules.run_deepsig.output.tsv,
-        rules.characterize_peptides.output.tsv,
-        expand(
-            rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
-        ),
-
+        rules.combine_peptide_annotations.output.tsv
 
 rule predict_nrps:
     """
