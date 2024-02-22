@@ -339,7 +339,7 @@ rule combine_peptide_predictions:
 
 
 ################################################################################
-## Charaterize & annotate predicted peptide sequences
+## Compare against known peptides
 ################################################################################
 
 
@@ -391,6 +391,40 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
 
 
 ################################################################################
+## Charaterize & annotate predicted peptide sequences
+################################################################################
+
+
+rule run_deepsig:
+    """
+    This rule uses deepsig to predict signal peptides in proteins using deep learning.
+    """
+    input:
+        peptide=rules.combine_peptide_predictions.output.peptide,
+    output:
+        tsv=OUTPUT_DIR / "annotation/deepsig/deepsig.tsv",
+    conda:
+        "envs/deepsig.yml"
+    shell:
+        """
+        deepsig -f {input} -o {output} -k euk
+        """
+
+
+rule characterize_peptides:
+    input:
+        peptide=rules.combine_peptide_predictions.output.peptide,
+    output:
+        tsv=OUTPUT_DIR / "annotation/characteristics/peptide_characteristics.tsv",
+    conda:
+        "envs/peptides.yml"
+    shell:
+        """
+        python scripts/characterize_peptides.py {input.peptide} {output.tsv}
+        """
+
+
+################################################################################
 ## Target rule all
 ################################################################################
 
@@ -422,6 +456,8 @@ rule predict_cleavage:
         rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
         rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
+        rules.run_deepsig.output.tsv,
+        rules.characterize_peptides.output.tsv,
 
 
 rule predict_nrps:
