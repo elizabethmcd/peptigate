@@ -77,7 +77,6 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
     # The code below parses the JSON into TSV and FASTA format.
 
     fasta_records = []
-    protein_id_counter = {}
 
     with open(output_tsv, "w", newline="\n") as file:
         writer = csv.writer(file, delimiter="\t")
@@ -95,16 +94,11 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
         )
 
         for ind, sequence in enumerate(sequences):
-            protein_id = sequence["name"]
-            peptide_id = protein_id
-            if peptide_id in protein_id_counter:
-                protein_id_counter[protein_id] += 1
-            else:
-                protein_id_counter[protein_id] = 1
-
-            peptide_id = f"{protein_id}_{protein_id_counter[protein_id]}"
             class_pred = class_predictions[ind]["class_predictions"][0]
             cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
+
+            protein_id = sequence["name"]
+            peptide_id = f"{protein_id}_start{cleavage_pred['start']}_end{cleavage_pred['stop']}"
 
             writer.writerow(
                 [
