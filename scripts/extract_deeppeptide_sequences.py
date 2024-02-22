@@ -67,13 +67,22 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
                     SeqRecord(Seq(protein_sequence), id=protein_id, description="")
                 )
 
+                # Initialize an index to track the number of peptides predicted from each protein.
+                # This makes sure each peptide will have a unique identifier.
+                peptide_index = 1
+
                 for peptide in peptides:
                     start, end = peptide["start"], peptide["end"]
+                    peptide_metadata = {"start": start, "end": end, "type": "deeppeptide"}
                     peptide_sequence = protein_sequence[start - 1 : end]  # Extract peptide sequence
-                    peptide_id = f"{protein_id}_peptide_{start}_{end}_deeppeptide"
+                    peptide_id = f"{protein_id}_{peptide_index}"
+                    description_fields = [f"{key}:{value}" for key, value in metadata.items()]
                     peptide_records.append(
-                        SeqRecord(Seq(peptide_sequence), id=peptide_id, description="")
+                        SeqRecord(Seq(peptide_sequence), 
+                                  id=peptide_id, 
+                                  description=" ".join(description_fields))
                     )
+                    peptide_index += 1
 
     with open(proteins_output_file, "w") as proteins_out:
         SeqIO.write(protein_records, proteins_out, "fasta")
