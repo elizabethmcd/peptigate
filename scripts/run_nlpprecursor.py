@@ -84,11 +84,13 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
         writer.writerow(
             [
                 "peptide_id",
-                "class",
+                "start",
+                "end",
+                "peptide_type",
+                "peptide_class",
+                "prediction_tool",
                 "class_score",
                 "cleavage_sequence",
-                "cleavage_start",
-                "cleavage_stop",
                 "cleavage_score",
             ]
         )
@@ -103,11 +105,13 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
             writer.writerow(
                 [
                     peptide_id,
-                    class_pred["class"],
-                    class_pred["score"],
-                    cleavage_pred["sequence"],
                     cleavage_pred["start"],
                     cleavage_pred["stop"],
+                    "cleavage",
+                    class_pred["class"],
+                    "nlpprecursor",
+                    class_pred["score"],
+                    cleavage_pred["sequence"],
                     cleavage_pred["score"],
                 ]
             )
@@ -115,10 +119,11 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
             peptide_metadata = {
                 "start": cleavage_pred["start"],
                 "end": cleavage_pred["stop"],
-                "type": "nlpprecursor",
+                "type": "cleavage",
                 "class": class_pred["class"],
                 "class_score": class_pred["score"],
                 "cleavage_score": cleavage_pred["score"],
+                "prediction_tool": "nlpprecursor",
             }
             description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
             seq_record = SeqRecord(
