@@ -77,6 +77,7 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
     # The code below parses the JSON into TSV and FASTA format.
 
     fasta_records = []
+    protein_id_counter = {}
 
     with open(output_tsv, "w", newline="\n") as file:
         writer = csv.writer(file, delimiter="\t")
@@ -94,13 +95,20 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
         )
 
         for ind, sequence in enumerate(sequences):
-            name = sequence["name"]
+            protein_id = sequence["name"]
+            peptide_id = protein_id
+            if peptide_id in protein_id_counter:
+                protein_id_counter[protein_id] += 1
+            else:
+                protein_id_counter[protein_id] = 1
+
+            peptide_id = f"{protein_id}_{protein_id_counter[protein_id]}"
             class_pred = class_predictions[ind]["class_predictions"][0]
             cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
 
             writer.writerow(
                 [
-                    name,
+                    peptide_id,
                     class_pred["class"],
                     class_pred["score"],
                     cleavage_pred["sequence"],
@@ -110,14 +118,20 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
                 ]
             )
 
-            peptide_id = (
-                f"{name}_"
-                f"{class_pred['class']}_"
-                f"{cleavage_pred['start']}_"
-                f"{cleavage_pred['stop']}_"
-                "nlpprecursor"
+            peptide_metadata = {
+                "start": cleavage_pred["start"],
+                "end": cleavage_pred["stop"],
+                "type": "nlpprecursor",
+                "class": class_pred["class"],
+                "class_score": class_pred["score"],
+                "cleavage_score": cleavage_pred["score"],
+            }
+            description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
+            seq_record = SeqRecord(
+                Seq(cleavage_pred["sequence"]),
+                id=peptide_id,
+                description=" ".join(description_fields),
             )
-            seq_record = SeqRecord(Seq(cleavage_pred["sequence"]), id=peptide_id, description="")
             fasta_records.append(seq_record)
 
     SeqIO.write(fasta_records, output_fasta, "fasta")
