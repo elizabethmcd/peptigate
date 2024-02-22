@@ -40,8 +40,8 @@ def characterize_peptides(input_file, output_file):
                 "pd1_residue_volume",
                 "pd2_hydrophilicity",
                 "z1_lipophilicity",
-                "z2_steric_properties",
-                "z3_electronic_properties",
+                "z2_steric_bulk_or_polarizability",
+                "z3_polarity_or_charge",
                 "z4_electronegativity_etc",
                 "z5_electronegativity_etc",
             ]
