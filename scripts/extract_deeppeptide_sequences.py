@@ -15,8 +15,9 @@ def read_fasta(fasta_file):
     return sequences
 
 
-def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file,
-                              predictions_output_file):
+def extract_peptide_sequences(
+    data, fasta_file, proteins_output_file, peptides_output_file, predictions_output_file
+):
     """
     Extract gene and peptide sequences based on the data dictionary and FASTA file,
     then write to separate files.
@@ -80,7 +81,7 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
                         "end": end,
                         "type": "cleavage",
                         "class": peptide_class,
-                        "prediction_tool": "deeppeptide"
+                        "prediction_tool": "deeppeptide",
                     }
                     peptide_sequence = protein_sequence[start - 1 : end]  # Extract peptide sequence
                     peptide_id = f"{protein_id}_start{start}_end{end}"
@@ -94,9 +95,9 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
                             description=" ".join(description_fields),
                         )
                     )
-                    predictions.append([
-                        peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"
-                    ])
+                    predictions.append(
+                        [peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"]
+                    )
 
     with open(proteins_output_file, "w") as proteins_out:
         SeqIO.write(protein_records, proteins_out, "fasta")
@@ -104,16 +105,17 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     with open(peptides_output_file, "w") as peptides_out:
         SeqIO.write(peptide_records, peptides_out, "fasta")
 
-    with open(predictions_output_file, "w", newline='') as predictions_out:
-        writer = csv.writer(predictions_out, delimiter='\t')
-        writer.writerow([
-            "peptide_id", "start", "end", "peptide_type", "peptide_class", "prediction_tool"
-        ])
+    with open(predictions_output_file, "w", newline="") as predictions_out:
+        writer = csv.writer(predictions_out, delimiter="\t")
+        writer.writerow(
+            ["peptide_id", "start", "end", "peptide_type", "peptide_class", "prediction_tool"]
+        )
         writer.writerows(predictions)
 
 
-def main(json_file, fasta_file, proteins_output_file,
-         peptides_output_file, predictions_output_file):
+def main(
+    json_file, fasta_file, proteins_output_file, peptides_output_file, predictions_output_file
+):
     with open(json_file) as f:
         data = json.load(f)
 
@@ -130,8 +132,7 @@ if __name__ == "__main__":
     parser.add_argument("proteins_output_file", type=str, help="The output file path for proteins.")
     parser.add_argument("peptides_output_file", type=str, help="The output file path for peptides.")
     parser.add_argument(
-        "predictions_output_file", type=str,
-        help="The output file path for predictions."
+        "predictions_output_file", type=str, help="The output file path for predictions."
     )
 
     args = parser.parse_args()
