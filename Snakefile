@@ -475,7 +475,10 @@ rule run_autopeptideml:
         "envs/autopeptideml.yml"
     shell:
         """
-        python scripts/run_autopeptideml.py --input_fasta {input.peptide} --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble --model_name {wildcards.autopeptideml_model_name} --output_tsv {output.tsv}
+        python scripts/run_autopeptideml.py --input_fasta {input.peptide} \
+            --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble \
+            --model_name {wildcards.autopeptideml_model_name} \
+            --output_tsv {output.tsv}
         """
 
 
