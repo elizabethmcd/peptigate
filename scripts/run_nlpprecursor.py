@@ -83,7 +83,7 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
 
         writer.writerow(
             [
-                "name",
+                "peptide_id",
                 "class",
                 "class_score",
                 "cleavage_sequence",

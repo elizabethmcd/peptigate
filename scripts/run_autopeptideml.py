@@ -20,7 +20,7 @@ def read_fasta(input_fasta):
     """
     sequences = []
     for seq_record in SeqIO.parse(input_fasta, "fasta"):
-        sequences.append({"ID": seq_record.id, "sequence": str(seq_record.seq)})
+        sequences.append({"peptide_id": seq_record.id, "sequence": str(seq_record.seq)})
     return pd.DataFrame(sequences)
 
 
