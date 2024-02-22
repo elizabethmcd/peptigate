@@ -282,7 +282,7 @@ rule extract_deeppeptide_sequences:
     output:
         propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
         peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
-        tsv=OUTPUT_DIR / "cleavage/deeppeptide/predictions.tsv"
+        tsv=OUTPUT_DIR / "cleavage/deeppeptide/predictions.tsv",
     conda:
         "envs/biopython.yml"
     shell:
@@ -479,6 +479,7 @@ rule run_autopeptideml:
         python scripts/run_autopeptideml.py --input_fasta {input.peptide} --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble --model_name {wildcards.autopeptideml_model_name} --output_tsv {output.tsv}
         """
 
+
 rule combine_peptide_annotations:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
@@ -490,9 +491,11 @@ rule combine_peptide_annotations:
         peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         characteristics=rules.characterize_peptides.output.tsv,
     output:
-        tsv=OUTPUT_DIR / "annotation/peptide_annotations.tsv"
-    params: autopeptidemldir=OUTPUT_DIR / "annotation/autopeptideml/"
-    conda: "envs/tidyverse.yml"
+        tsv=OUTPUT_DIR / "annotation/peptide_annotations.tsv",
+    params:
+        autopeptidemldir=OUTPUT_DIR / "annotation/autopeptideml/",
+    conda:
+        "envs/tidyverse.yml"
     shell:
         """
         Rscript scripts/combine_peptide_annotations.R --nlpprecursor_path {input.nlpprecursor} \
@@ -503,6 +506,7 @@ rule combine_peptide_annotations:
             --characteristics_path {input.characteristics} \
             --output_path {output.tsv}
         """
+
 
 ################################################################################
 ## Target rule all
@@ -533,7 +537,8 @@ rule predict_cleavage:
     snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.combine_peptide_annotations.output.tsv
+        rules.combine_peptide_annotations.output.tsv,
+
 
 rule predict_nrps:
     """
