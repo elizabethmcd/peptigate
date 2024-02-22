@@ -76,11 +76,15 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
                     peptide_metadata = {"start": start, "end": end, "type": "deeppeptide"}
                     peptide_sequence = protein_sequence[start - 1 : end]  # Extract peptide sequence
                     peptide_id = f"{protein_id}_{peptide_index}"
-                    description_fields = [f"{key}:{value}" for key, value in metadata.items()]
+                    description_fields = [
+                        f"{key}:{value}" for key, value in peptide_metadata.items()
+                    ]
                     peptide_records.append(
-                        SeqRecord(Seq(peptide_sequence), 
-                                  id=peptide_id, 
-                                  description=" ".join(description_fields))
+                        SeqRecord(
+                            Seq(peptide_sequence),
+                            id=peptide_id,
+                            description=" ".join(description_fields),
+                        )
                     )
                     peptide_index += 1
 
