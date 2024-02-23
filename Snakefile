@@ -424,6 +424,64 @@ rule characterize_peptides:
         """
 
 
+AUTOPEPTIDEML_MODEL_NAMES = [
+    "AB",
+    "ACE",
+    "ACP",
+    "AF",
+    "AMAP",
+    "AMP",
+    "AOX",
+    "APP",
+    "AV",
+    "BBP",
+    "DPPIV",
+    "MRSA",
+    "Neuro",
+    "QS",
+    "TOX",
+    "TTCA",
+]
+
+
+rule run_autopeptideml:
+    """
+    AutoPeptideML predicts the bioactivity of a peptide based on user-supplied models.
+    The tool is a binary classifier, so each bioactivty has it's own model.
+    As defined by AUTOPEPTIDEML_MODEL_NAMES, we use models trained in the autopeptideml preprint.
+    The abbreviations are AB: Antibacterial; ACE: ACE inhibitor; ACP: Anticancer; AF: Antifungal;
+    AMAP: Antimalarial; AMP: Antimicrobial; AOX: Antioxidant; APP: Antiparasitic; AV: Antiviral; 
+    BBB: Brain-blood barrier crossing; DPPIV: DPPIV inhibitor; MRSA: Anti-MRSA; NP: Neuropeptide; 
+    QS: Quorum sensing; TOX: Toxic; TTCA: Tumor T-cell antigens.
+    
+    The script below only predicts the bioactive classification against these models.
+    However, autopeptideml was built to train new binary classifiers and peptipedia contains a lot
+    of labelled peptides, so one could develop new models if the ones included above are 
+    insufficient.
+    """
+    input:
+        peptide=rules.combine_peptide_predictions.output.peptide,
+        # TER TODO: the authors of autopeptideml sent me these models.
+        # They said they're working on uploading them.
+        # Once they're available, I need to add a rule to download them and update the input here
+        # to be the rules syntax
+        model=INPUT_DIR
+        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
+    output:
+        tsv=OUTPUT_DIR / "annotation/autopeptideml/autopeptideml_{autopeptideml_model_name}.tsv",
+    params:
+        modelsdir=INPUT_DIR / "models/autopeptideml/HPO_NegSearch_HP/",
+    conda:
+        "envs/autopeptideml.yml"
+    shell:
+        """
+        python scripts/run_autopeptideml.py --input_fasta {input.peptide} \
+            --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble \
+            --model_name {wildcards.autopeptideml_model_name} \
+            --output_tsv {output.tsv}
+        """
+
+
 ################################################################################
 ## Target rule all
 ################################################################################
@@ -458,6 +516,9 @@ rule predict_cleavage:
         rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         rules.run_deepsig.output.tsv,
         rules.characterize_peptides.output.tsv,
+        expand(
+            rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
+        ),
 
 
 rule predict_nrps:

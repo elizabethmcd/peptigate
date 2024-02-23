@@ -1,0 +1,11 @@
+channels:
+   - conda-forge
+   - bioconda
+   - defaults
+dependencies:
+   - scikit-learn=1.3.0
+   - biopython=1.83
+   - python=3.11.8
+   - pip=24.0
+   - pip:
+      - autopeptideml==0.2.9
