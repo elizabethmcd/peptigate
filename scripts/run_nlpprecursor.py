@@ -14,7 +14,6 @@ from nlpprecursor.classification.data import DatasetGenerator as CDG
 # This allows for backwards compatibility of the pickled models.
 sys.modules["protai"] = nlpprecursor
 
-
 def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     Attempts to call the predict function up to a maximum number of attempts.
@@ -152,7 +151,7 @@ def extract_ripp_sequences(filtered_predictions, output_tsv, output_fasta):
                 "class": class_pred["class"],
                 "class_score": class_pred["score"],
                 "cleavage_score": cleavage_pred["score"],
-                "prediction_tool": "nlpprecursor"
+                "prediction_tool": "nlpprecursor",
             }
             description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
             seq_record = SeqRecord(
