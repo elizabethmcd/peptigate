@@ -387,7 +387,7 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
     shell:
         """
         diamond blastp -d {params.dbprefix} -q {input.peptide} -o {output.tsv} --header simple \
-         --outfmt 6 qseqid sseqid pident length qlen slen mismatch gapopen qstart qend sstart send evalue bitscore
+         --outfmt 6 qseqid sseqid full_sseq pident length qlen slen mismatch gapopen qstart qend sstart send evalue bitscore
         """
 
 
