@@ -466,7 +466,7 @@ rule run_autopeptideml:
         # Once they're available, I need to add a rule to download them and update the input here
         # to be the rules syntax
         model=INPUT_DIR
-        / "models" / "autopeptideml" / "HPO_NegSearch_HP" / f"{autopeptideml_model_name}_1" / "apml_config.json",
+        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
     output:
         tsv=OUTPUT_DIR / "annotation/autopeptideml/autopeptideml_{autopeptideml_model_name}.tsv",
     params:
