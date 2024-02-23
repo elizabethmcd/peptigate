@@ -14,6 +14,7 @@ from nlpprecursor.classification.data import DatasetGenerator as CDG
 # This allows for backwards compatibility of the pickled models.
 sys.modules["protai"] = nlpprecursor
 
+
 def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     Attempts to call the predict function up to a maximum number of attempts.
@@ -49,7 +50,7 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
 def predict_ripp_sequences(models_dir, input_fasta):
     """
     Uses NLPPrecursor to predict the class and cleavage sites of sequences from an input FASTA file,
-    filtering out sequences classified as "NONRIPP". 
+    filtering out sequences classified as "NONRIPP".
 
     Parameters:
     - models_dir (str): The directory path where the model files are stored. Available for download
@@ -162,6 +163,7 @@ def extract_ripp_sequences(filtered_predictions, output_tsv, output_fasta):
             fasta_records.append(seq_record)
 
     SeqIO.write(fasta_records, output_fasta, "fasta")
+
 
 def main(models_dir, input_fasta, output_tsv, output_fasta):
     filtered_predictions = predict_ripp_sequences(models_dir, input_fasta)
