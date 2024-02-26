@@ -476,7 +476,8 @@ rule run_autopeptideml:
         "envs/autopeptideml.yml"
     shell:
         """
-        python scripts/run_autopeptideml.py --input_fasta {input.peptide} \
+        python scripts/run_autopeptideml.py \
+            --input_fasta {input.peptide} \
             --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble \
             --model_name {wildcards.autopeptideml_model_name} \
             --output_tsv {output.tsv}
@@ -501,7 +502,8 @@ rule combine_peptide_annotations:
         "envs/tidyverse.yml"
     shell:
         """
-        Rscript scripts/combine_peptide_annotations.R --nlpprecursor_path {input.nlpprecursor} \
+        Rscript scripts/combine_peptide_annotations.R \
+            --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
             --autopeptideml_dir {params.autopeptidemldir} \
             --deepsig_path {input.deepsig} \
