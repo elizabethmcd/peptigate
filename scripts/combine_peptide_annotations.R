@@ -48,8 +48,6 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path,
                                         peptipedia_path, characteristics_path) {
   
   nlpprecursor <- read_tsv(nlpprecursor_path) %>%
-    rename_with(.cols = class_score:cleavage_score, 
-                function(x) { paste0("nlpprecursor_", x)}) %>%
     select(-nlpprecursor_cleavage_sequence)
   
   deeppeptide <- read_tsv(deeppeptide_path)
@@ -62,13 +60,11 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path,
     summarize(across(everything(), ~ first(na.omit(.))))
   
   deepsig <- read_tsv(deepsig_path,
-                      col_names = c("peptide_id", "tool", "feature", 
-                                    "feature_start", "feature_end", 
-                                    "feature_score", "tmp1", "tmp2", 
-                                    "description")) %>%
-    select(-tool, -tmp1, -tmp2) %>%
-    rename_with(.cols = feature:description, 
-                function(x) { paste0("deepsig_", x)})
+                      col_names = c("peptide_id", "tool", "deepsig_feature", 
+                                    "deepsig_feature_start", "deepsig_feature_end", 
+                                    "deepsig_feature_score", "tmp1", "tmp2", 
+                                    "deepsig_description")) %>%
+    select(-tool, -tmp1, -tmp2)
   
   peptipedia <- read_tsv(peptipedia_path) %>%
     rename(peptide_id = qseqid)  %>%
