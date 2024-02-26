@@ -408,7 +408,8 @@ rule run_deepsig:
         "envs/deepsig.yml"
     shell:
         """
-        deepsig -f {input} -o {output} -k euk
+        deepsig -f {input} -o {output}.tmp -k euk
+        python scripts/add_header_to_deepsig_tsv.py {output}.tmp {output}
         """
 
 
