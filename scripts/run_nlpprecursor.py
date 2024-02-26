@@ -121,9 +121,9 @@ def extract_ripp_sequences(filtered_predictions, output_tsv, output_fasta):
                 "peptide_type",
                 "peptide_class",
                 "prediction_tool",
-                "class_score",
-                "cleavage_sequence",
-                "cleavage_score",
+                "nlpprecursor_class_score",
+                "nlpprecursor_cleavage_sequence",
+                "nlpprecursor_cleavage_score",
             ]
         )
 
