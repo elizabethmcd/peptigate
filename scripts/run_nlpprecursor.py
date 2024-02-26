@@ -49,8 +49,8 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
 
 def predict_ripp_sequences(models_dir, input_fasta):
     """
-    Uses NLPPrecursor to predict the class and cleavage sites of sequences from an input FASTA file,
-    filtering out sequences classified as "NONRIPP".
+    Uses NLPPrecursor to predict the class and cleavage sites of sequences from an input FASTA file.
+    It filters out sequences classified as "NONRIPP" since these are the negative class.
 
     Parameters:
     - models_dir (str): The directory path where the model files are stored. Available for download
