@@ -34,6 +34,11 @@ def write_deepsig_tsv_with_header(output_file, data):
         writer.writerows(data)
 
 def main(input_file, output_file):
+    """
+    Reads and writes a deepsig TSV header, adding a header row.
+    Deepsig does not include column names in its output.
+    This script reads in the deepsig TSV, adds headers, and writes out the TSV.
+    """
     data = read_deepsig_tsv(input_file)
     write_deepsig_tsv_with_header(output_file, data)
 
