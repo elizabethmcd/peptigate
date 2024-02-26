@@ -59,16 +59,12 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path,
     group_by(peptide_id, sequence) %>% 
     summarize(across(everything(), ~ first(na.omit(.))))
   
-  deepsig <- read_tsv(deepsig_path,
-                      col_names = c("peptide_id", "tool", "deepsig_feature", 
-                                    "deepsig_feature_start", "deepsig_feature_end", 
-                                    "deepsig_feature_score", "tmp1", "tmp2", 
-                                    "deepsig_description")) %>%
+  deepsig <- read_tsv(deepsig_path) %>%
     select(-tool, -tmp1, -tmp2)
   
   peptipedia <- read_tsv(peptipedia_path) %>%
     rename(peptide_id = qseqid)  %>%
-    rename_with(.cols = sseqid:bitscore, 
+    rename_with(.cols = -peptide_id, 
                 function(x) { paste0("peptipedia_blast_", x)}) %>%
     group_by(peptide_id) %>%
     add_count(peptide_id) %>%
@@ -79,10 +75,10 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path,
   characteristics <- read_tsv(characteristics_path)
   
   peptide_predictions_with_annotations <- peptide_predictions %>%
-    left_join(autopeptideml, by = "peptide_id") %>%
-    left_join(characteristics, by = "peptide_id") %>%
-    left_join(deepsig, by = "peptide_id") %>% 
-    left_join(peptipedia, by = "peptide_id")
+    left_join(autopeptideml, by = "peptide_id", relationship = "one-to-one") %>%
+    left_join(characteristics, by = "peptide_id", relationship = "one-to-one") %>%
+    left_join(deepsig, by = "peptide_id", relationship = "one-to-one") %>% 
+    left_join(peptipedia, by = "peptide_id", relationship = "one-to-one")
   
   return(peptide_predictions_with_annotations)
 }
