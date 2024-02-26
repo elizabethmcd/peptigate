@@ -29,7 +29,7 @@ def characterize_peptides(input_file, output_file):
         tsv_writer = csv.writer(out_file, delimiter="\t")
         tsv_writer.writerow(
             [
-                "id",
+                "peptide_id",
                 "aliphatic_index",
                 "boman_index",
                 "charge",

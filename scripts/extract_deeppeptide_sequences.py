@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 
 from Bio import SeqIO
@@ -14,7 +15,9 @@ def read_fasta(fasta_file):
     return sequences
 
 
-def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file):
+def extract_peptide_sequences(
+    data, fasta_file, proteins_output_file, peptides_output_file, predictions_output_file
+):
     """
     Extract gene and peptide sequences based on the data dictionary and FASTA file,
     then write to separate files.
@@ -38,6 +41,7 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
       Peptide sequences are also written in FASTA format, with headers indicating their source ID,
       start and end positions in the protein sequence, and that DeepPeptide was the source of the
       annotation.
+    - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
 
     Returns:
     None
@@ -47,15 +51,18 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     - KeyError: If the expected keys are not found in the data dictionary.
 
     Example usage:
-    extract_peptide_sequences(data={'PREDICTIONS': {'>1': {'peptides': [{'start': 1, 'end': 9}]}}},
-                              fasta_file='path/to/fasta_file.fasta',
-                              proteins_output_file='path/to/proteins_output.fasta',
-                              peptides_output_file='path/to/peptides_output.fasta')
+    extract_peptide_sequences(
+        data={'PREDICTIONS': {'>1': {'peptides': [{'start': 1, 'end': 9, 'type': 'Propeptide'}]}}},
+        fasta_file='path/to/fasta_file.fasta',
+        proteins_output_file='path/to/proteins_output.fasta',
+        peptides_output_file='path/to/peptides_output.fasta',
+        predictions_output_file='path/to/output.tsv')
     """
     sequences = read_fasta(fasta_file)
 
     protein_records = []
     peptide_records = []
+    predictions = []
 
     for protein_key, protein_info in data["PREDICTIONS"].items():
         protein_id = protein_key.split()[0][1:]  # Extract the ID part
@@ -68,11 +75,28 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
                 )
 
                 for peptide in peptides:
-                    start, end = peptide["start"], peptide["end"]
+                    start, end, peptide_class = peptide["start"], peptide["end"], peptide["type"]
+                    peptide_metadata = {
+                        "start": start,
+                        "end": end,
+                        "type": "cleavage",
+                        "class": peptide_class,
+                        "prediction_tool": "deeppeptide",
+                    }
                     peptide_sequence = protein_sequence[start - 1 : end]  # Extract peptide sequence
-                    peptide_id = f"{protein_id}_peptide_{start}_{end}_deeppeptide"
+                    peptide_id = f"{protein_id}_start{start}_end{end}"
+                    description_fields = [
+                        f"{key}:{value}" for key, value in peptide_metadata.items()
+                    ]
                     peptide_records.append(
-                        SeqRecord(Seq(peptide_sequence), id=peptide_id, description="")
+                        SeqRecord(
+                            Seq(peptide_sequence),
+                            id=peptide_id,
+                            description=" ".join(description_fields),
+                        )
+                    )
+                    predictions.append(
+                        [peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"]
                     )
 
     with open(proteins_output_file, "w") as proteins_out:
@@ -81,24 +105,36 @@ def extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_o
     with open(peptides_output_file, "w") as peptides_out:
         SeqIO.write(peptide_records, peptides_out, "fasta")
 
+    with open(predictions_output_file, "w", newline="") as predictions_out:
+        writer = csv.writer(predictions_out, delimiter="\t")
+        writer.writerow(
+            ["peptide_id", "start", "end", "peptide_type", "peptide_class", "prediction_tool"]
+        )
+        writer.writerows(predictions)
 
-def main(json_file, fasta_file, proteins_output_file, peptides_output_file):
+
+def main(
+    json_file, fasta_file, proteins_output_file, peptides_output_file, predictions_output_file
+):
     with open(json_file) as f:
         data = json.load(f)
 
-    extract_peptide_sequences(data, fasta_file, proteins_output_file, peptides_output_file)
+    extract_peptide_sequences(
+        data, fasta_file, proteins_output_file, peptides_output_file, predictions_output_file
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract peptide sequences from DeepPeptide JSON.")
 
-    # Add the arguments
     parser.add_argument("json_file", type=str, help="The JSON file output by DeepPeptide.")
     parser.add_argument("fasta_file", type=str, help="The protein FASTA file input to DeepPeptide.")
     parser.add_argument("proteins_output_file", type=str, help="The output file path for proteins.")
     parser.add_argument("peptides_output_file", type=str, help="The output file path for peptides.")
+    parser.add_argument(
+        "predictions_output_file", type=str, help="The output file path for predictions."
+    )
 
-    # Execute the parse_args() method
     args = parser.parse_args()
 
     main(
@@ -106,4 +142,5 @@ if __name__ == "__main__":
         args.fasta_file,
         args.proteins_output_file,
         args.peptides_output_file,
+        args.predictions_output_file,
     )

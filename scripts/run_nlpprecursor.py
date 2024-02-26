@@ -47,7 +47,20 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
                 raise  # Re-raise the last exception if out of attempts
 
 
-def main(models_dir, input_fasta, output_tsv, output_fasta):
+def predict_ripp_sequences(models_dir, input_fasta):
+    """
+    Uses NLPPrecursor to predict the class and cleavage sites of sequences from an input FASTA file.
+    It filters out sequences classified as "NONRIPP" since these are the negative class.
+
+    Parameters:
+    - models_dir (str): The directory path where the model files are stored. Available for download
+      here: https://github.com/magarveylab/nlpprecursor/releases.
+    - input_fasta (str): The path to the input FASTA file containing sequences to be processed.
+
+    Returns:
+    - list of tuples: Each tuple contains the sequence information, class prediction, and cleavage
+      prediction for sequences not classified as "NONRIPP".
+    """
     models_dir = Path(models_dir)
 
     class_model_dir = models_dir / "classification"
@@ -60,67 +73,101 @@ def main(models_dir, input_fasta, output_tsv, output_fasta):
 
     sequences = []
 
-    # Read sequences from the input fasta file
     for record in SeqIO.parse(input_fasta, "fasta"):
         sequences.append({"sequence": str(record.seq), "name": record.id})
 
-    # Predict class and cleavage for each sequence
     try:
         class_predictions = robust_predict(
             CDG.predict, class_model_path, class_vocab_path, sequences
         )
     except Exception as final_error:
         print(f"Failed to predict class after several attempts: {final_error}")
+        class_predictions = []
+
     cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, sequences)
 
-    # The output of nlpprecursor predictions are in JSON format.
-    # The code below parses the JSON into TSV and FASTA format.
+    # Filter out NONRIPP class predictions and pair sequences with their predictions.`
+    # NONRIPP is the negative class.
+    filtered_predictions = []
+    for ind, sequence in enumerate(sequences):
+        class_pred = class_predictions[ind]["class_predictions"][0] if class_predictions else None
+        cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
+        if class_pred and class_pred["class"] != "NONRIPP":
+            filtered_predictions.append((sequence, class_pred, cleavage_pred))
 
+    return filtered_predictions
+
+
+def extract_ripp_sequences(filtered_predictions, output_tsv, output_fasta):
+    """
+    Extracts and writes the sequences and their prediction information to specified TSV and FASTA
+    files from the filtered predictions.
+
+    Parameters:
+    - filtered_predictions (list of tuples): Filtered sequence predictions to be written out.
+      Produced by predict_ripp_sequences.py.
+    - output_tsv (str): The path to the output TSV file.
+    - output_fasta (str): The path to the output FASTA file.
+    """
     fasta_records = []
 
     with open(output_tsv, "w", newline="\n") as file:
         writer = csv.writer(file, delimiter="\t")
-
         writer.writerow(
             [
-                "name",
-                "class",
-                "class_score",
-                "cleavage_sequence",
-                "cleavage_start",
-                "cleavage_stop",
-                "cleavage_score",
+                "peptide_id",
+                "start",
+                "end",
+                "peptide_type",
+                "peptide_class",
+                "prediction_tool",
+                "nlpprecursor_class_score",
+                "nlpprecursor_cleavage_sequence",
+                "nlpprecursor_cleavage_score",
             ]
         )
 
-        for ind, sequence in enumerate(sequences):
-            name = sequence["name"]
-            class_pred = class_predictions[ind]["class_predictions"][0]
-            cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
+        for sequence, class_pred, cleavage_pred in filtered_predictions:
+            protein_id = sequence["name"]
+            peptide_id = f"{protein_id}_start{cleavage_pred['start']}_end{cleavage_pred['stop']}"
 
             writer.writerow(
                 [
-                    name,
-                    class_pred["class"],
-                    class_pred["score"],
-                    cleavage_pred["sequence"],
+                    peptide_id,
                     cleavage_pred["start"],
                     cleavage_pred["stop"],
+                    "cleavage",
+                    class_pred["class"],
+                    "nlpprecursor",
+                    class_pred["score"],
+                    cleavage_pred["sequence"],
                     cleavage_pred["score"],
                 ]
             )
 
-            peptide_id = (
-                f"{name}_"
-                f"{class_pred['class']}_"
-                f"{cleavage_pred['start']}_"
-                f"{cleavage_pred['stop']}_"
-                "nlpprecursor"
+            peptide_metadata = {
+                "start": cleavage_pred["start"],
+                "end": cleavage_pred["stop"],
+                "type": "cleavage",
+                "class": class_pred["class"],
+                "class_score": class_pred["score"],
+                "cleavage_score": cleavage_pred["score"],
+                "prediction_tool": "nlpprecursor",
+            }
+            description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
+            seq_record = SeqRecord(
+                Seq(cleavage_pred["sequence"]),
+                id=peptide_id,
+                description=" ".join(description_fields),
             )
-            seq_record = SeqRecord(Seq(cleavage_pred["sequence"]), id=peptide_id, description="")
             fasta_records.append(seq_record)
 
     SeqIO.write(fasta_records, output_fasta, "fasta")
+
+
+def main(models_dir, input_fasta, output_tsv, output_fasta):
+    filtered_predictions = predict_ripp_sequences(models_dir, input_fasta)
+    extract_ripp_sequences(filtered_predictions, output_tsv, output_fasta)
 
 
 if __name__ == "__main__":
