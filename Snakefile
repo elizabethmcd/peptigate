@@ -292,38 +292,10 @@ rule extract_deeppeptide_sequences:
 
 
 ################################################################################
-## Non-ribosomal peptide synthetase annotation
-################################################################################
-
-
-rule nrps_hmmsearch:
-    """
-    Uses hidden markov models to search for domains that are commonly annotated in NRPS genes.
-    The input.hmm file is produced by download_nrps_hmm_profiles.snakefile and included in this repo. 
-    """
-    input:
-        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
-        hmm=INPUT_DIR / "models/nrps/nrps.hmm",
-    output:
-        txt=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.txt",
-        tbltsv=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.tbltsv",
-        domtsv=OUTPUT_DIR / "nrps/hmmsearch/hmmsearch.domtsv",
-    conda:
-        "envs/hmmer.yml"
-    threads: 4
-    shell:
-        """
-        hmmsearch -o {output.txt} --tblout {output.tbltsv} --domtblout {output.domtsv} --cpu {threads} {input.hmm} {input.faa} 
-        """
-
-
-################################################################################
 ## Combine peptide predictions
 ################################################################################
 
 
-# TER TODO: figure out if the NRPS results are significant and should be parsed and included
-# TER TODO: figure out if nlpprecursor results need to be filtered
 # TER TODO: add sORF predictions
 
 
@@ -525,7 +497,6 @@ rule all:
         rules.rnasamba.output.tsv,
         rules.nlpprecursor.output.peptide,
         rules.extract_deeppeptide_sequences.output.peptide,
-        rules.nrps_hmmsearch.output.tbltsv,
 
 
 rule predict_sORF:
@@ -544,12 +515,3 @@ rule predict_cleavage:
     """
     input:
         rules.combine_peptide_annotations.output.tsv,
-
-
-rule predict_nrps:
-    """
-    Defines a target rule for nonribosomal peptide synthetase prediction so a user can run only NRPS prediction if they desire.
-    snakemake predict_nrps --software-deployment-method conda -j 8 
-    """
-    input:
-        rules.nrps_hmmsearch.output.tbltsv,
