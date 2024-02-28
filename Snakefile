@@ -296,8 +296,6 @@ rule extract_deeppeptide_sequences:
 ################################################################################
 
 
-# TER TODO: figure out if the NRPS results are significant and should be parsed and included
-# TER TODO: figure out if nlpprecursor results need to be filtered
 # TER TODO: add sORF predictions
 
 
