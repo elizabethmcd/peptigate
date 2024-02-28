@@ -1,6 +1,0 @@
-channels:
-   - conda-forge
-   - bioconda
-   - defaults
-dependencies:
-   - hmmer=3.4
