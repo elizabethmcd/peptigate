@@ -15,16 +15,13 @@ VALIDATION_TYPES = [
 # The order of CODING_TYPES must correspond to the order of the positional args that are later passed to rnasamba.
 # In addition, the order of CODING_TYPES and DATASET_TYPES is used to declare outputs in the rule/R script process_sequences_into_nonoverlapping_sets.
 CODING_TYPES = ["coding", "noncoding"]
-DATASET_TYPES = ["train", "test", "validation"]
-MODEL_TYPES = ["eukaryote", "human"]
-
+DATASET_TYPES = ["train", "validation"]
 
 rule all:
     input:
         "outputs/models/datasets/3_stats/set_summary.tsv",
         expand(
-            "outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
-            model_type=MODEL_TYPES,
+            "outputs/models/build/plmutils/1_evaluation/accuracy_metrics_{dataset_type}.tsv",
             dataset_type=DATASET_TYPES,
         ),
 
@@ -185,98 +182,14 @@ rule filter_sequence_sets:
 
 
 ##################################################################
-## Build RNAsamba model
+## Build plm-utils model 
 ##################################################################
 
+# install plmutils if can't be done in conda env
+# build the model
+# run the model on the RNAchallenge dataset
+# calculate accuracy -- either use a similar script as calculate_rnasamba_model_accuracy.R or see if we can just use a plmutils script
 
-rule pip_install_rnasamba_no_deps:
-    """
-    To take advantage of nvidia GPU on AWS instance "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" (ami-07eb000b3340966b0),
-    we need to install specific versions of tensorflow and other dependencies.
-    This is accomplished in the envs/rnasamba.yml file, however rnasamba itself is not installed there because we need to use the command:
-    pip install --no-deps rnasamba
-    and there is no way to specify the "--no-deps" flag in a yaml file.
-    This rule installs rnasamba into the conda-generated environment.
-    """
-    output:
-        "outputs/models/build/rnasamba/rnasamba_installed.txt",
-    conda:
-        "envs/rnasamba.yml"
-    shell:
-        """
-        pip install 'nvidia-tensorflow~=1.15'
-        pip install --no-deps rnasamba # used version 0.2.5
-        touch {output}
-        """
-
-
-rule build_rnasamba_model:
-    """
-    Build a new rnasamba model from the training data curated above.
-    The --early_stopping parameter reduces training time and can help avoid overfitting.
-    It is the number of epochs after lowest validation loss before stopping training.
-    """
-    input:
-        rnasamba="outputs/models/build/rnasamba/rnasamba_installed.txt",
-        fa=expand(
-            "outputs/models/datasets/2_sequence_sets/{coding_type}_train.fa",
-            coding_type=CODING_TYPES,
-        ),
-    output:
-        "outputs/models/build/rnasamba/0_model/eukaryote_rnasamba.hdf5",
-    conda:
-        "envs/rnasamba.yml"
-    benchmark:
-        "benchmarks/models/build/rnasamba/0_model/eukaryote_rnasamba.tsv"
-    shell:
-        """
-        rnasamba train --early_stopping 5 --verbose 2 {output} {input.fa[0]} {input.fa[1]}
-        """
-
-
-rule assess_rnasamba_model:
-    input:
-        model="outputs/models/build/rnasamba/0_model/{model_type}_rnasamba.hdf5",
-        faa="outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
-    output:
-        faa="outputs/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.fa",
-        predictions="outputs/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv",
-    benchmark:
-        "benchmarks/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv"
-    conda:
-        "envs/rnasamba.yml"
-    shell:
-        """
-        rnasamba classify --protein_fasta {output.faa} {output.predictions} {input.faa} {input.model}
-        """
-
-
-rule calculate_rnasamba_model_accuracy:
-    input:
-        expand(
-            "outputs/models/build/rnasamba/1_evaluation/{{model_type}}/{coding_type}_{{dataset_type}}.tsv",
-            coding_type=CODING_TYPES,
-        ),
-    output:
-        freq="outputs/models/build/rnasamba/1_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
-        metrics="outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
-    conda:
-        "envs/caret.yml"
-    script:
-        "scripts/calculate_rnasamba_model_accuracy.R"
-
-
-rule download_rnasamba_human_model:
-    """
-    Use this model to compare whether the new model performs better or worse.
-    It's saved under a new name so we can use a wildcard to run rnasamba classify and to calculate model accuracy.
-    """
-    output:
-        "outputs/models/build/rnasamba/0_model/human_rnasamba.hdf5",
-    shell:
-        """
-        curl -JLo {output} https://github.com/apcamargo/RNAsamba/raw/master/data/full_length_weights.hdf5
-        """
 
 
 ##################################################################
