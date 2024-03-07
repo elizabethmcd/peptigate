@@ -20,18 +20,13 @@ DATASET_TYPES = ["train", "validation"]
 rule all:
     input:
         "outputs/models/datasets/3_stats/set_summary.tsv",
-        expand(
-            "outputs/models/build/plmutils/1_evaluation/accuracy_metrics_{dataset_type}.tsv",
-            dataset_type=DATASET_TYPES,
-        ),
-
 
 rule download_ensembl_data:
     """
     Download ensembl cDNA and ncRNA files.
     Ensembl annotates protein coding and non-coding RNA transcripts in their files.
-    This information will be used to separate protein coding from non-coding RNAs to build an RNAsamba model.
-    Note this download renames genome files from their names on ensembl to make them simpler to point to.
+    This information will be used to separate protein coding from non-coding RNAs.
+    Note this download script changes the output file names to make them simpler to point to.
     See example transformations below:
     - cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz -> cdna/Homo_sapiens.GRCh38.cdna.fa.gz (dropped "all.")
     - ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz   -> ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz (no change)
@@ -52,8 +47,11 @@ rule download_ensembl_data:
 
 rule extract_protein_coding_orfs_from_cdna:
     """
-    Ensembl cDNA files consist of transcript sequences for actual and possible genes, including pseudogenes, NMD and the like.
-    Transcripts in the cDNA files have headers like: >TRANSCRIPT_ID SEQTYPE LOCATION GENE_ID GENE_BIOTYPE TRANSCRIPT_BIOTYPE, where the gene_biotype and transcript_biotype both contain information about whether the gene is coding or not.
+    Ensembl cDNA files consist of transcript sequences for actual and possible genes,
+    including pseudogenes, NMD and the like.
+    Transcripts in the cDNA files have headers like: 
+    >TRANSCRIPT_ID SEQTYPE LOCATION GENE_ID GENE_BIOTYPE TRANSCRIPT_BIOTYPE,
+    where gene_biotype and transcript_biotype contain information about whether the gene is coding.
     """
     input:
         "inputs/models/datasets/ensembl/cdna/{genome}.cdna.fa.gz",
@@ -63,7 +61,12 @@ rule extract_protein_coding_orfs_from_cdna:
         "envs/seqkit.yml"
     shell:
         """
-        seqkit grep --use-regexp --by-name --pattern "transcript_biotype:protein_coding" -o {output} {input}
+        seqkit grep \
+            --use-regexp \
+            --by-name \
+            --pattern "transcript_biotype:protein_coding" \
+            -o {output} \
+            {input}
         """
 
 
@@ -109,7 +112,7 @@ rule grab_all_sequence_names_and_lengths:
 
 rule reduce_sequence_homology:
     """
-    To reduce pollution between training and testing set, cluster sequences at 80% sequence identity.
+    Cluster sequences at 80% sequence identity to reduce pollution between train and test data sets.
     """
     input:
         "outputs/models/datasets/1_homology_reduction/all_sequences.fa",
@@ -128,7 +131,8 @@ rule reduce_sequence_homology:
 
 rule grab_validation_set_names_and_lengths:
     """
-    The train/test data set sequences are identifiable by the genome information in the header, which is consistently formatted by Ensembl.
+    The train/test data set sequences are identifiable by the genome information in the header,
+    which is consistently formatted by Ensembl.
     The same is not true for the validation data.
     This rule grabs the validation sequence header names so they can be separated from the train/test sets.
     """
@@ -185,9 +189,50 @@ rule filter_sequence_sets:
 ## Build plm-utils model 
 ##################################################################
 
-# install plmutils if can't be done in conda env
-# build the model
-# run the model on the RNAchallenge dataset
+rule plmutils_translate:
+    input: "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa"
+    output: "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa"
+    conda: "envs/plmutils.yml"
+    shell:
+        """
+        plmutils translate --longest-only --output-filepath {output}_tmp {input}
+        # If this is the training data set, filter to sequences that are less than 100 amino acids.
+        # Otherwise, keep all sequences.
+        # We only want to train with short sequences since this our use case (detecting sORFs).
+        # This is combine with this rule so that the output file naming scheme is consistent,
+        # which allows us not to duplicate snakemake rules for downstream plmutils commands.
+        if [ {wildcards.dataset_type} == "train" ]; then
+            seqkit seq --max-len 100 -o {output} {output}_tmp
+        else
+            mv {output}_tmp {output}
+        fi
+        """
+
+rule plmutils_embed:
+    input: "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa"
+    output: "outputs/models/build/plmutils/1_embeddings/{coding_type}_{dataset_type}.npy"
+    conda: "envs/plmutils.yml"
+    shell:
+        """
+        plmutils embed --model-name esm2_t6_8M_UR50D \
+            --layer-ind -1 \
+            --output-filepath {output} \
+            {input}
+        """
+
+rule plmutils_train:
+    input: expand("outputs/models/build/plmutils/1_embeddings/{coding_type}_train.npy", coding_type = CODING_TYPES) 
+    output: "outputs/models/build/plmutils/2_model/classifier.joblib"
+    params: modeldir = "outputs/models/plmutils/2_model/"
+    conda: "envs/plmutils.yml"
+    shell:
+        """
+        plmutils train --positive-class-filepath {input[0]} \
+            --negative-class-filepath {input[1]} \
+            --model-dirpath {params.modeldir}
+        """
+
+
 # calculate accuracy -- either use a similar script as calculate_rnasamba_model_accuracy.R or see if we can just use a plmutils script
 
 
