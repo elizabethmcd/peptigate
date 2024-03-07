@@ -20,6 +20,7 @@ DATASET_TYPES = ["train", "validation"]
 rule all:
     input:
         "outputs/models/datasets/3_stats/set_summary.tsv",
+        expand("outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv", coding_type = CODING_TYPES)
 
 rule download_ensembl_data:
     """
@@ -232,9 +233,20 @@ rule plmutils_train:
             --model-dirpath {params.modeldir}
         """
 
-
-# calculate accuracy -- either use a similar script as calculate_rnasamba_model_accuracy.R or see if we can just use a plmutils script
-
+rule plmutils_predict_on_validation:
+    input:
+        embeddings="outputs/models/build/plmutils/1_embeddings/{coding_type}_validation.npy",
+        fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa"
+    output: "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv"
+    params: modeldir = "outputs/models/plmutils/2_model/"
+    conda: "envs/plmutils.yml"
+    shell:
+        """
+        plmutils predict --model-dirpath tmp/plmutils-maxlen100/ \
+            --embeddings-filepath {input.embeddings} \
+            --fasta-filepath {input.fasta} \
+            --output-filepath {output}
+        """
 
 
 ##################################################################
