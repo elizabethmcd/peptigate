@@ -236,13 +236,14 @@ rule plmutils_train:
 rule plmutils_predict_on_validation:
     input:
         embeddings="outputs/models/build/plmutils/1_embeddings/{coding_type}_validation.npy",
-        fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa"
+        fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
+        model="outputs/models/build/plmutils/2_model/classifier.joblib"
     output: "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv"
     params: modeldir = "outputs/models/plmutils/2_model/"
     conda: "envs/plmutils.yml"
     shell:
         """
-        plmutils predict --model-dirpath tmp/plmutils-maxlen100/ \
+        plmutils predict --model-dirpath {params.modeldir} \
             --embeddings-filepath {input.embeddings} \
             --fasta-filepath {input.fasta} \
             --output-filepath {output}
