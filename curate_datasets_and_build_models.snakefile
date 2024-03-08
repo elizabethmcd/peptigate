@@ -224,7 +224,7 @@ rule plmutils_embed:
 rule plmutils_train:
     input: expand("outputs/models/build/plmutils/1_embeddings/{coding_type}_train.npy", coding_type = CODING_TYPES) 
     output: "outputs/models/build/plmutils/2_model/classifier.joblib"
-    params: modeldir = "outputs/models/plmutils/2_model/"
+    params: modeldir = "outputs/models/build/plmutils/2_model/"
     conda: "envs/plmutils.yml"
     shell:
         """
@@ -239,7 +239,7 @@ rule plmutils_predict_on_validation:
         fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
         model="outputs/models/build/plmutils/2_model/classifier.joblib"
     output: "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv"
-    params: modeldir = "outputs/models/plmutils/2_model/"
+    params: modeldir = "outputs/models/build/plmutils/2_model/"
     conda: "envs/plmutils.yml"
     shell:
         """
