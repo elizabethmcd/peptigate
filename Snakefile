@@ -23,7 +23,7 @@ SHORT_CONTIGS = Path(config["short_contigs"])
 ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
 ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
 ALL_CONTIGS = Path(config["all_contigs"])
-
+PLMUTILS_MODEL = Path(config["plmutils_model"])
 
 ################################################################################
 ## sORF prediction
@@ -49,7 +49,7 @@ rule combine_contigs:
         "envs/seqkit.yml"
     shell:
         """
-        cat {input.short_contigs} {output.all_contigs} > {output.all_contigs}
+        cat {input.short_contigs} {input.all_contigs} > {output.all_contigs}
         """
 
 
@@ -91,21 +91,6 @@ rule filter_contigs_to_no_predicted_ORF:
         """
         seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
         """
-
-
-rule download_plmutils_model:
-    """
-    Place holder rule.
-    For now, the workflow uses the model output by curate_datasets_and_build_models.snakefile. 
-    which is available locally from running it.
-    """
-    output:
-        model=directory(OUTPUT_DIR / "models/plmutils/build/2_model"),
-    shell:
-        """
-        curl -JLo {output.model} # TODO add URL for download
-        """
-
 
 rule plmutils_translate:
     """
@@ -157,7 +142,7 @@ rule plmutils_predict:
     input:
         embeddings=rules.plmutils_embed.output.npy,
         faa=rules.length_filter_plmutils_translate_output.output.faa,
-        model=rules.download_plmutils_model.output.model,
+        model=PLMUTILS_MODEL,
     output:
         csv=OUTPUT_DIR / "sORF/plmutils/predictions.csv",
     conda:
@@ -177,13 +162,13 @@ rule extract_plmutils_predicted_peptides:
         faa=rules.length_filter_plmutils_translate_output.output.faa,
     output:
         names=OUTPUT_DIR / "sORF/plmutils/peptide_names.faa",
-        faa=OUTPUT_DIR / "sORF/plmlutils/peptides.faa",
+        faa=OUTPUT_DIR / "sORF/plmutils/peptides.faa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-        cut -d, -f1 {input.csv} | tail -n +2 > {output.names} 
-        seqkit grep -v -f {output.names} {input.faa} -o {output.faa}
+        grep "positive" {input.csv} | cut -d, -f1 > {output.names} 
+        seqkit grep -f {output.names} {input.faa} -o {output.faa}
         """
 
 
