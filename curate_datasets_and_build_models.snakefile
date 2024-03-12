@@ -211,9 +211,12 @@ rule plmutils_translate:
     that the output file naming scheme is consistent.
     This allows us not to duplicate snakemake rules for downstream plmutils commands.
     """
-    input: "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa"
-    output: "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa"
-    conda: "envs/plmutils.yml"
+    input:
+        "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
+    output:
+        "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
+    conda:
+        "envs/plmutils.yml"
     input:
         "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
     output:
@@ -253,7 +256,8 @@ rule plmutils_train:
             "outputs/models/build/plmutils/1_embeddings/{coding_type}_train.npy",
             coding_type=CODING_TYPES,
         ),
-    output: directory("outputs/models/build/plmutils/2_model")
+    output:
+        directory("outputs/models/build/plmutils/2_model"),
     conda:
         "envs/plmutils.yml"
     shell:
@@ -263,11 +267,12 @@ rule plmutils_train:
             --model-dirpath {output}
         """
 
+
 rule plmutils_predict_on_validation:
     input:
         embeddings="outputs/models/build/plmutils/1_embeddings/{coding_type}_validation.npy",
         fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
-        model=plmutils_train.output
+        model=plmutils_train.output,
     output:
         "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
     conda:
@@ -280,9 +285,11 @@ rule plmutils_predict_on_validation:
             --output-filepath {output}
         """
 
+
 ##################################################################
 ## Get sequence statistics
 ##################################################################
+
 
 rule get_sequence_descriptors:
     input:
