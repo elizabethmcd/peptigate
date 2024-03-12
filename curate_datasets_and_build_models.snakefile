@@ -15,17 +15,15 @@ VALIDATION_TYPES = [
 # The order of CODING_TYPES must correspond to the order of the positional args that are later passed to rnasamba.
 # In addition, the order of CODING_TYPES and DATASET_TYPES is used to declare outputs in the rule/R script process_sequences_into_nonoverlapping_sets.
 CODING_TYPES = ["coding", "noncoding"]
-DATASET_TYPES = ["train", "test", "validation"]
-MODEL_TYPES = ["eukaryote", "human"]
+DATASET_TYPES = ["train", "validation"]
 
 
 rule all:
     input:
         "outputs/models/datasets/3_stats/set_summary.tsv",
         expand(
-            "outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
-            model_type=MODEL_TYPES,
-            dataset_type=DATASET_TYPES,
+            "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
+            coding_type=CODING_TYPES,
         ),
 
 
@@ -33,8 +31,8 @@ rule download_ensembl_data:
     """
     Download ensembl cDNA and ncRNA files.
     Ensembl annotates protein coding and non-coding RNA transcripts in their files.
-    This information will be used to separate protein coding from non-coding RNAs to build an RNAsamba model.
-    Note this download renames genome files from their names on ensembl to make them simpler to point to.
+    This information will be used to separate protein coding from non-coding RNAs.
+    Note this download script changes the output file names to make them simpler to point to.
     See example transformations below:
     - cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz -> cdna/Homo_sapiens.GRCh38.cdna.fa.gz (dropped "all.")
     - ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz   -> ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz (no change)
@@ -55,8 +53,11 @@ rule download_ensembl_data:
 
 rule extract_protein_coding_orfs_from_cdna:
     """
-    Ensembl cDNA files consist of transcript sequences for actual and possible genes, including pseudogenes, NMD and the like.
-    Transcripts in the cDNA files have headers like: >TRANSCRIPT_ID SEQTYPE LOCATION GENE_ID GENE_BIOTYPE TRANSCRIPT_BIOTYPE, where the gene_biotype and transcript_biotype both contain information about whether the gene is coding or not.
+    Ensembl cDNA files consist of transcript sequences for actual and possible genes,
+    including pseudogenes, NMD and the like.
+    Transcripts in the cDNA files have headers like: 
+    >TRANSCRIPT_ID SEQTYPE LOCATION GENE_ID GENE_BIOTYPE TRANSCRIPT_BIOTYPE,
+    where gene_biotype and transcript_biotype contain information about whether the gene is coding.
     """
     input:
         "inputs/models/datasets/ensembl/cdna/{genome}.cdna.fa.gz",
@@ -66,7 +67,12 @@ rule extract_protein_coding_orfs_from_cdna:
         "envs/seqkit.yml"
     shell:
         """
-        seqkit grep --use-regexp --by-name --pattern "transcript_biotype:protein_coding" -o {output} {input}
+        seqkit grep \
+            --use-regexp \
+            --by-name \
+            --pattern "transcript_biotype:protein_coding" \
+            -o {output} \
+            {input}
         """
 
 
@@ -112,7 +118,7 @@ rule grab_all_sequence_names_and_lengths:
 
 rule reduce_sequence_homology:
     """
-    To reduce pollution between training and testing set, cluster sequences at 80% sequence identity.
+    Cluster sequences at 80% sequence identity to reduce pollution between train and test data sets.
     """
     input:
         "outputs/models/datasets/1_homology_reduction/all_sequences.fa",
@@ -131,7 +137,8 @@ rule reduce_sequence_homology:
 
 rule grab_validation_set_names_and_lengths:
     """
-    The train/test data set sequences are identifiable by the genome information in the header, which is consistently formatted by Ensembl.
+    The train/test data set sequences are identifiable by the genome information in the header,
+    which is consistently formatted by Ensembl.
     The same is not true for the validation data.
     This rule grabs the validation sequence header names so they can be separated from the train/test sets.
     """
@@ -185,97 +192,97 @@ rule filter_sequence_sets:
 
 
 ##################################################################
-## Build RNAsamba model
+## Build plm-utils model
 ##################################################################
 
 
-rule pip_install_rnasamba_no_deps:
+rule plmutils_translate:
     """
-    To take advantage of nvidia GPU on AWS instance "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" (ami-07eb000b3340966b0),
-    we need to install specific versions of tensorflow and other dependencies.
-    This is accomplished in the envs/rnasamba.yml file, however rnasamba itself is not installed there because we need to use the command:
-    pip install --no-deps rnasamba
-    and there is no way to specify the "--no-deps" flag in a yaml file.
-    This rule installs rnasamba into the conda-generated environment.
-    """
-    output:
-        "outputs/models/build/rnasamba/rnasamba_installed.txt",
-    conda:
-        "envs/rnasamba.yml"
-    shell:
-        """
-        pip install 'nvidia-tensorflow~=1.15'
-        pip install --no-deps rnasamba # used version 0.2.5
-        touch {output}
-        """
-
-
-rule build_rnasamba_model:
-    """
-    Build a new rnasamba model from the training data curated above.
-    The --early_stopping parameter reduces training time and can help avoid overfitting.
-    It is the number of epochs after lowest validation loss before stopping training.
+    This rule takes input nucleotide transcripts, detects the longest open reading frame, and
+    translates it into amino acid sequences.
+    This step is applied to both the training and validation data sets (by expanding over the
+    wildcard dataset_type).
+    However, when processing the training data set, the rule also filters to sequences that are
+    less than 100 amino acids.
+    Otherwise, keep all sequences.
+    We only want to train with short sequences since this our use case (detecting sORFs), but we
+    want to predict the coding status of short and long sequences in the validation set.
+    The if statement is included in this rule (as opposed to having a separate filtering rule) so
+    that the output file naming scheme is consistent.
+    This allows us not to duplicate snakemake rules for downstream plmutils commands.
     """
     input:
-        rnasamba="outputs/models/build/rnasamba/rnasamba_installed.txt",
-        fa=expand(
-            "outputs/models/datasets/2_sequence_sets/{coding_type}_train.fa",
-            coding_type=CODING_TYPES,
-        ),
+        "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
     output:
-        "outputs/models/build/rnasamba/0_model/eukaryote_rnasamba.hdf5",
+        "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
     conda:
-        "envs/rnasamba.yml"
-    benchmark:
-        "benchmarks/models/build/rnasamba/0_model/eukaryote_rnasamba.tsv"
+        "envs/plmutils.yml"
+    params:
+        tmp=lambda wildcards: "outputs/models/build/plmutils/0_translate/"
+        + wildcards.coding_type
+        + "_"
+        + wildcards.dataset_type
+        + "_tmp.fa",
     shell:
         """
-        rnasamba train --early_stopping 5 --verbose 2 {output} {input.fa[0]} {input.fa[1]}
+        plmutils translate --longest-only --output-filepath {params.tmp} {input}
+        if [ {wildcards.dataset_type} == "train" ]; then
+            seqkit seq --max-len 100 -o {output} {params.tmp}
+        else
+            mv {params.tmp} {output}
+        fi
         """
 
 
-rule assess_rnasamba_model:
+rule plmutils_embed:
     input:
-        model="outputs/models/build/rnasamba/0_model/{model_type}_rnasamba.hdf5",
-        faa="outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
+        "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
     output:
-        faa="outputs/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.fa",
-        predictions="outputs/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv",
-    benchmark:
-        "benchmarks/models/build/rnasamba/1_evaluation/{model_type}/{coding_type}_{dataset_type}.tsv"
+        "outputs/models/build/plmutils/1_embeddings/{coding_type}_{dataset_type}.npy",
     conda:
-        "envs/rnasamba.yml"
+        "envs/plmutils.yml"
     shell:
         """
-        rnasamba classify --protein_fasta {output.faa} {output.predictions} {input.faa} {input.model}
+        plmutils embed --model-name esm2_t6_8M_UR50D \
+            --layer-ind -1 \
+            --output-filepath {output} \
+            {input}
         """
 
 
-rule calculate_rnasamba_model_accuracy:
+rule plmutils_train:
     input:
         expand(
-            "outputs/models/build/rnasamba/1_evaluation/{{model_type}}/{coding_type}_{{dataset_type}}.tsv",
+            "outputs/models/build/plmutils/1_embeddings/{coding_type}_train.npy",
             coding_type=CODING_TYPES,
         ),
     output:
-        freq="outputs/models/build/rnasamba/1_evaluation/{model_type}/confusionmatrix_{dataset_type}.tsv",
-        metrics="outputs/models/build/rnasamba/1_evaluation/{model_type}/accuracy_metrics_{dataset_type}.tsv",
+        directory("outputs/models/build/plmutils/2_model"),
     conda:
-        "envs/caret.yml"
-    script:
-        "scripts/calculate_rnasamba_model_accuracy.R"
-
-
-rule download_rnasamba_human_model:
-    """
-    Use this model to compare whether the new model performs better or worse.
-    It's saved under a new name so we can use a wildcard to run rnasamba classify and to calculate model accuracy.
-    """
-    output:
-        "outputs/models/build/rnasamba/0_model/human_rnasamba.hdf5",
+        "envs/plmutils.yml"
     shell:
         """
-        curl -JLo {output} https://github.com/apcamargo/RNAsamba/raw/master/data/full_length_weights.hdf5
+        plmutils train --positive-class-filepath {input[0]} \
+            --negative-class-filepath {input[1]} \
+            --model-dirpath {output}
+        """
+
+
+rule plmutils_predict_on_validation:
+    input:
+        embeddings="outputs/models/build/plmutils/1_embeddings/{coding_type}_validation.npy",
+        fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
+        model=rules.plmutils_train.output,
+    output:
+        "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils predict --model-dirpath {input.model} \
+            --embeddings-filepath {input.embeddings} \
+            --fasta-filepath {input.fasta} \
+            --output-filepath {output}
         """
 
 
