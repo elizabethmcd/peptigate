@@ -272,7 +272,7 @@ rule plmutils_predict_on_validation:
     input:
         embeddings="outputs/models/build/plmutils/1_embeddings/{coding_type}_validation.npy",
         fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
-        model=plmutils_train.output,
+        model=rules.plmutils_train.output,
     output:
         "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
     conda:
