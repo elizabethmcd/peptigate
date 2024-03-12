@@ -92,6 +92,7 @@ rule filter_contigs_to_no_predicted_ORF:
         seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
         """
 
+
 rule plmutils_translate:
     """
     This rule takes input nucleotide transcripts, detects the longest open reading frame, and
