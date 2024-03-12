@@ -43,13 +43,15 @@ rule combine_contigs:
     input:
         short_contigs=SHORT_CONTIGS,
         all_contigs=ALL_CONTIGS,
-    output: all_contigs = OUTPUT_DIR / "sORF/contigs/all_input_contigs.fa"
+    output:
+        all_contigs=OUTPUT_DIR / "sORF/contigs/all_input_contigs.fa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
         cat {input.short_contigs} {output.all_contigs} > {output.all_contigs}
         """
+
 
 rule get_coding_contig_names:
     """
@@ -98,11 +100,12 @@ rule download_plmutils_model:
     which is available locally from running it.
     """
     output:
-        model=directory(OUTPUT_DIR / "models/plmutils/build/2_model")
+        model=directory(OUTPUT_DIR / "models/plmutils/build/2_model"),
     shell:
         """
         curl -JLo {output.model} # TODO add URL for download
         """
+
 
 rule plmutils_translate:
     """
@@ -110,9 +113,9 @@ rule plmutils_translate:
     translates it into amino acid sequences.
     """
     input:
-        rules.filter_contigs_to_no_predicted_ORF.output.fa
+        rules.filter_contigs_to_no_predicted_ORF.output.fa,
     output:
-        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs.faa"
+        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs.faa",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -120,19 +123,25 @@ rule plmutils_translate:
         plmutils translate --longest-only --output-filepath {output} {input}
         """
 
+
 rule length_filter_plmutils_translate_output:
-    input: rules.plmutils_translate.output.faa
-    output: 
-        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs_filtered.faa"
-    conda: "envs/seqkit.yml"
+    input:
+        rules.plmutils_translate.output.faa,
+    output:
+        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs_filtered.faa",
+    conda:
+        "envs/seqkit.yml"
     shell:
         """
         seqkit seq --max-len 100 -o {output} {input}
         """
 
+
 rule plmutils_embed:
-    input: rules.length_filter_plmutils_translate_output.output.faa
-    output: npy = OUTPUT_DIR / "sORF/plmutils/embedded_contigs_filtered.npy"
+    input:
+        rules.length_filter_plmutils_translate_output.output.faa,
+    output:
+        npy=OUTPUT_DIR / "sORF/plmutils/embedded_contigs_filtered.npy",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -143,12 +152,14 @@ rule plmutils_embed:
             {input}
         """
 
+
 rule plmutils_predict:
     input:
-        embeddings = rules.plmutils_embed.output.npy,
-        faa = rules.length_filter_plmutils_translate_output.output.faa
+        embeddings=rules.plmutils_embed.output.npy,
+        faa=rules.length_filter_plmutils_translate_output.output.faa,
         model=rules.download_plmutils_model.output.model,
-    output: csv=OUTPUT_DIR / "sORF/plmutils/predictions.csv"
+    output:
+        csv=OUTPUT_DIR / "sORF/plmutils/predictions.csv",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -159,13 +170,14 @@ rule plmutils_predict:
             --output-filepath {output.csv}
         """
 
+
 rule extract_plmutils_predicted_peptides:
     input:
         csv=rules.plmutils_predict.output.csv,
-        faa=rules.length_filter_plmutils_translate_output.output.faa
+        faa=rules.length_filter_plmutils_translate_output.output.faa,
     output:
         names=OUTPUT_DIR / "sORF/plmutils/peptide_names.faa",
-        faa= OUPUT_DIR / "sORF/plmlutils/peptides.faa"
+        faa=OUTPUT_DIR / "sORF/plmlutils/peptides.faa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -173,6 +185,7 @@ rule extract_plmutils_predicted_peptides:
         cut -d, -f1 {input.csv} | tail -n +2 > {output.names} 
         seqkit grep -v -f {output.names} {input.faa} -o {output.faa}
         """
+
 
 ################################################################################
 ## cleavage prediction
@@ -496,7 +509,7 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.combine_peptide_annotations.output.tsv
+        rules.combine_peptide_annotations.output.tsv,
 
 
 rule predict_sORF:
