@@ -461,6 +461,7 @@ rule combine_peptide_annotations:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
+        plmutils=rules.plmutils_predict.output.csv,
         autopeptideml=expand(
             rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
         ),
@@ -478,6 +479,7 @@ rule combine_peptide_annotations:
         Rscript scripts/combine_peptide_annotations.R \
             --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
+            --plmutils_path {input.plmutils} \
             --autopeptideml_dir {params.autopeptidemldir} \
             --deepsig_path {input.deepsig} \
             --peptipedia_path {input.peptipedia} \

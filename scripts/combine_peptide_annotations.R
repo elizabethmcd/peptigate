@@ -9,6 +9,9 @@ option_list <- list(
   make_option(c("--deeppeptide_path"), type="character",
               default="outputs/cleavage/deeppeptide/predictions.tsv", 
               help="Path to DeepPeptide predictions TSV file."),
+  make_option(c("--plmutils_path"), type="character",
+              default="outputs/sORF/plmutils/predictions.csv", 
+              help="Path to plmutils sORF predictions CSV file."),
   make_option(c("--autopeptideml_dir"), type="character",
               default="outputs/annotation/autopeptideml/", 
               help="Path to directory containing AutoPeptideML TSV files."),
@@ -37,13 +40,14 @@ args <- parse_args(OptionParser(option_list=option_list))
 #'
 #' @param nlpprecursor_path Path to the NLPprecursor predictions TSV file.
 #' @param deeppeptide_path Path to the DeepPeptide predictions TSV file.
+#' @param plmutils_path Path to the plmutils predictions CSV file.
 #' @param autopeptideml_dir Path to the directory containing AutoPeptideML TSV files.
 #' @param deepsig_path Path to the DeepSig annotations TSV file.
 #' @param peptipedia_path Path to the Peptipedia BLAST matches TSV file.
 #' @param characteristics_path Path to the peptide characteristics TSV file.
 #'
 #' @return A data frame with peptide predictions merged with various annotations.
-combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, 
+combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, plmutils_path, 
                                         autopeptideml_dir, deepsig_path,
                                         peptipedia_path, characteristics_path) {
   
@@ -51,8 +55,15 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path,
     select(-nlpprecursor_cleavage_sequence)
   
   deeppeptide <- read_tsv(deeppeptide_path)
+
+  plmutils <- read_csv(plmutils_path) %>%
+    filter(predicted_label == "positive") %>%
+    select(peptide_id = sequence_id) %>%
+    mutate(peptide_type = "sORF", 
+           prediction_tool = "plmutils")
   
-  peptide_predictions <- bind_rows(nlpprecursor, deeppeptide)
+  peptide_predictions <- bind_rows(nlpprecursor, deeppeptide) %>%
+    bind_rows(plmutils)
   
   autopeptideml_files <- Sys.glob(paste0(autopeptideml_dir, "/*tsv"))
   autopeptideml <- map_dfr(autopeptideml_files, read_tsv) %>%
@@ -85,6 +96,7 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path,
 
 annotations_df<- combine_peptide_annotations(nlpprecursor_path = args$nlpprecursor_path,
                                              deeppeptide_path = args$deeppeptide_path,
+                                             plmutils_path = args$plmutils_path,
                                              autopeptideml_dir = args$autopeptideml_dir,
                                              deepsig_path = args$deepsig_path,
                                              peptipedia_path = args$peptipedia_path,
