@@ -30,51 +30,37 @@ ALL_CONTIGS = Path(config["all_contigs"])
 ################################################################################
 
 
-rule filter_nt_contigs_to_short:
+rule combine_contigs:
+    """
+    By default we assume that transcript provided to this pipeline are reads2transcriptome outputs.
+    Reads2transcriptome outputs two files that contain complete contigs.
+    The first we refer to as short_contigs, which are transcripts output by assemblers that did not
+    meet the r2t runs minimum contig length (by default, 75 nt).
+    The second we refer to as all_contigs and are assembled transcripts that passed the isoform
+    clustering and decontamination steps of r2t.
+    We no longer need these pools of transcripts differentiated, so we combine them in this rule. 
+    """
     input:
-        all_contigs=ALL_CONTIGS,
         short_contigs=SHORT_CONTIGS,
-    output:
-        contigs300=temp(OUTPUT_DIR / "outputs/sORF/short_contigs/contigs300.fa"),
-        all_short_contigs=OUTPUT_DIR / "sORF/short_contigs/short_contigs.fa",
-    conda:
-        "envs/seqkit.yml"
-    shell:
-        """
-        seqkit seq --max-len 300 -o {output.contigs300} {input.all_contigs}
-        cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
-        """
-
-
-# TER TODO: Add a rule for sORF prediction, either once smallesm is developed,
-#           when there is an accurate sORF rnasamba model,
-#           or using another tool from Singh & Roy.
-
-
-rule filter_nt_contigs_to_long:
-    input:
         all_contigs=ALL_CONTIGS,
-    output:
-        long_contigs=temp(OUTPUT_DIR / "sORF/long_contigs/contigs300.fa"),
+    output: all_contigs = OUTPUT_DIR / "sORF/contigs/all_input_contigs.fa"
     conda:
         "envs/seqkit.yml"
     shell:
         """
-        seqkit seq --min-len 301 -o {output.long_contigs} {input.all_contigs}
+        cat {input.short_contigs} {output.all_contigs} > {output.all_contigs}
         """
-
 
 rule get_coding_contig_names:
     """
     Extract amino acid contig names and remove everything after the first period, 
     which are isoform labels.
-    This file will be used to select all contigs that DO NOT encode ORFs, 
-    according to transdecoder.
+    This file will be used to select all contigs that DID NOT have a transdecoder-detected ORFs. 
     """
     input:
         ORFS_AMINO_ACIDS,
     output:
-        names=OUTPUT_DIR / "sORF/long_contigs/orfs_amino_acid_names.txt",
+        names=OUTPUT_DIR / "sORF/contigs/orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -83,19 +69,20 @@ rule get_coding_contig_names:
         """
 
 
-rule filter_long_contigs_to_no_predicted_ORF:
+rule filter_contigs_to_no_predicted_ORF:
     """
-    Many of the contigs in the full transcriptome have predicted ORFs.
-    The names of these contigs are recorded in the transdecoder input files (*pep & *cds, orfs_*).
-    By definition, these contigs are not noncoding RNAs, 
-    so they don't need to be considered for classification as long noncoding RNAs (lncRNA).
-    This step removes the contigs that contain ORFs.
+    The r2t pipeline runs transdecoder to predict open reading frames (ORFs) from transcripts.
+    By default, only ORFs that are longer than 100 amino acids are kept by transdecoder.
+    The peptigate pipeline predicts peptides that are 100 amino acids or shorter.
+    This rule eliminates transcripts that contained a transdecoder-predicted ORF.
+    It keeps all other transcripts, regardless of length, to investigate the presence of an sORF
+    later in the pipeline.
     """
     input:
-        fa=rules.filter_nt_contigs_to_long.output.long_contigs,
+        fa=rules.combine_contigs.output.all_contigs,
         names=rules.get_coding_contig_names.output.names,
     output:
-        fa=OUTPUT_DIR / "sORF/long_contigs/long_contigs_no_predicted_orf.fa",
+        fa=OUTPUT_DIR / "sORF/contigs/contigs_with_no_transdecoder_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -104,71 +91,88 @@ rule filter_long_contigs_to_no_predicted_ORF:
         """
 
 
-rule download_rnasamba_model:
+rule download_plmutils_model:
     """
     Place holder rule.
-    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, 
+    For now, the workflow uses the model output by curate_datasets_and_build_models.snakefile. 
     which is available locally from running it.
     """
     output:
-        model=OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
+        model=directory(OUTPUT_DIR / "models/plmutils/build/2_model")
     shell:
         """
         curl -JLo {output.model} # TODO add URL for download
         """
 
-
-rule pip_install_rnasamba_no_deps:
+rule plmutils_translate:
     """
-    To take advantage of nvidia GPU on AWS instance 
-    ("Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" ami-07eb000b3340966b0),
-    we need to install specific versions of tensorflow and other dependencies.
-    This is accomplished in part in the envs/rnasamba.yml file, 
-    however rnasamba itself is not installed there because we need to use the command:
-    pip install --no-deps rnasamba
-    and there is no way to specify the "--no-deps" flag in a yaml file.
-    This rule installs rnasamba into the conda-generated environment.
-    Note the output path is the same as that used by curate_datasets_and_build_models.snakefile, 
-    as this conda env will already be present and configured if that snakefile has been executed.
-    """
-    output:
-        pip="outputs/models/build/rnasamba/rnasamba_installed.txt",
-    conda:
-        "envs/rnasamba.yml"
-    shell:
-        """
-        pip install 'nvidia-tensorflow~=1.15'
-        pip install --no-deps rnasamba # used version 0.2.5
-        touch {output}
-        """
-
-
-rule rnasamba:
-    """
-    The eukaryote_rnasamba.hdf5 model is only accurate on longer contigs.
-    It assesses whether they are long noncoding RNAs.
-    However, lncRNAs often have sORFs that encode peptides.
-    This rule runs RNAsamba on longer contigs (>300nt) that were not predicted by transdecoder to 
-    contain ORFs.
+    This rule takes input nucleotide transcripts, detects the longest open reading frame, and
+    translates it into amino acid sequences.
     """
     input:
-        # TER TODO: update path when model is downloaded
-        pip=rules.pip_install_rnasamba_no_deps.output.pip,
-        model=rules.download_rnasamba_model.output.model,
-        contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa,
+        rules.filter_contigs_to_no_predicted_ORF.output.fa
     output:
-        tsv=OUTPUT_DIR / "sORF/long_contigs/rnasamba/classification.tsv",
-        fa=OUTPUT_DIR / "sORF/long_contigs/rnasamba/predicted_proteins.fa",
+        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs.faa"
     conda:
-        "envs/rnasamba.yml"
+        "envs/plmutils.yml"
     shell:
         """
-        rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
+        plmutils translate --longest-only --output-filepath {output} {input}
         """
 
+rule length_filter_plmutils_translate_output:
+    input: rules.plmutils_translate.output.faa
+    output: 
+        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs_filtered.faa"
+    conda: "envs/seqkit.yml"
+    shell:
+        """
+        seqkit seq --max-len 100 -o {output} {input}
+        """
 
-## TER TODO: predict sORFs from lncRNAs
+rule plmutils_embed:
+    input: rules.length_filter_plmutils_translate_output.output.faa
+    output: npy = OUTPUT_DIR / "sORF/plmutils/embedded_contigs_filtered.npy"
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils embed --model-name esm2_t6_8M_UR50D \
+            --layer-ind -1 \
+            --output-filepath {output.npy} \
+            {input}
+        """
 
+rule plmutils_predict:
+    input:
+        embeddings = rules.plmutils_embed.output.npy,
+        faa = rules.length_filter_plmutils_translate_output.output.faa
+        model=rules.download_plmutils_model.output.model,
+    output: csv=OUTPUT_DIR / "sORF/plmutils/predictions.csv"
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils predict --model-dirpath {input.model} \
+            --embeddings-filepath {input.embeddings} \
+            --fasta-filepath {input.faa} \
+            --output-filepath {output.csv}
+        """
+
+rule extract_plmutils_predicted_peptides:
+    input:
+        csv=rules.plmutils_predict.output.csv,
+        faa=rules.length_filter_plmutils_translate_output.output.faa
+    output:
+        names=OUTPUT_DIR / "sORF/plmutils/peptide_names.faa",
+        faa= OUPUT_DIR / "sORF/plmlutils/peptides.faa"
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        cut -d, -f1 {input.csv} | tail -n +2 > {output.names} 
+        seqkit grep -v -f {output.names} {input.faa} -o {output.faa}
+        """
 
 ################################################################################
 ## cleavage prediction
@@ -296,11 +300,9 @@ rule extract_deeppeptide_sequences:
 ################################################################################
 
 
-# TER TODO: add sORF predictions
-
-
 rule combine_peptide_predictions:
     input:
+        sorf=rules.extract_plmutils_predicted_peptides.output.faa,
         nlpprecursor=rules.nlpprecursor.output.peptide,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide,
     output:
@@ -494,9 +496,7 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.rnasamba.output.tsv,
-        rules.nlpprecursor.output.peptide,
-        rules.extract_deeppeptide_sequences.output.peptide,
+        rules.combine_peptide_annotations.output.tsv
 
 
 rule predict_sORF:
@@ -505,7 +505,7 @@ rule predict_sORF:
     snakemake predict_sORF --software-deployment-method conda -j 8 
     """
     input:
-        rules.rnasamba.output.tsv,
+        sorf=rules.extract_plmutils_predicted_peptides.output.faa,
 
 
 rule predict_cleavage:
@@ -514,4 +514,5 @@ rule predict_cleavage:
     snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.combine_peptide_annotations.output.tsv,
+        rules.nlpprecursor.output.peptide,
+        rules.extract_deeppeptide_sequences.output.peptide,
