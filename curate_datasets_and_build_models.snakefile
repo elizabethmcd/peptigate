@@ -217,19 +217,14 @@ rule plmutils_translate:
         "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
     conda:
         "envs/plmutils.yml"
-    input:
-        "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
-    output:
-        "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
-    conda:
-        "envs/plmutils.yml"
+    params: tmp = lambda wildcards: "outputs/models/build/plmutils/0_translate/" + wildcards.coding_type + "_" + wildcards.dataset_type + "_tmp.fa"
     shell:
         """
-        plmutils translate --longest-only --output-filepath {output}_tmp {input}
+        plmutils translate --longest-only --output-filepath {params.tmp} {input}
         if [ {wildcards.dataset_type} == "train" ]; then
-            seqkit seq --max-len 100 -o {output} {output}_tmp
+            seqkit seq --max-len 100 -o {output} {params.tmp}
         else
-            mv {output}_tmp {output}
+            mv {params.tmp} {output}
         fi
         """
 
