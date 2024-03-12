@@ -197,7 +197,6 @@ rule filter_sequence_sets:
 
 
 rule plmutils_translate:
-<<<<<<< HEAD
     """
     This rule takes input nucleotide transcripts, detects the longest open reading frame, and
     translates it into amino acid sequences.
@@ -215,14 +214,12 @@ rule plmutils_translate:
     input: "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa"
     output: "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa"
     conda: "envs/plmutils.yml"
-=======
     input:
         "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa",
     output:
         "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
     conda:
         "envs/plmutils.yml"
->>>>>>> 5d7f35836a8ff72e10d63ff4ce12fa95ad8707c1
     shell:
         """
         plmutils translate --longest-only --output-filepath {output}_tmp {input}
@@ -270,16 +267,14 @@ rule plmutils_predict_on_validation:
     input:
         embeddings="outputs/models/build/plmutils/1_embeddings/{coding_type}_validation.npy",
         fasta="outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
-        model="outputs/models/build/plmutils/2_model/classifier.joblib",
+        model=plmutils_train.output
     output:
         "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
-    params:
-        modeldir="outputs/models/build/plmutils/2_model/",
     conda:
         "envs/plmutils.yml"
     shell:
         """
-        plmutils predict --model-dirpath {params.modeldir} \
+        plmutils predict --model-dirpath {input.model} \
             --embeddings-filepath {input.embeddings} \
             --fasta-filepath {input.fasta} \
             --output-filepath {output}
