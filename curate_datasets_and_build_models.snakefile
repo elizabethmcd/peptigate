@@ -217,7 +217,12 @@ rule plmutils_translate:
         "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa",
     conda:
         "envs/plmutils.yml"
-    params: tmp = lambda wildcards: "outputs/models/build/plmutils/0_translate/" + wildcards.coding_type + "_" + wildcards.dataset_type + "_tmp.fa"
+    params:
+        tmp=lambda wildcards: "outputs/models/build/plmutils/0_translate/"
+        + wildcards.coding_type
+        + "_"
+        + wildcards.dataset_type
+        + "_tmp.fa",
     shell:
         """
         plmutils translate --longest-only --output-filepath {params.tmp} {input}
