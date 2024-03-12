@@ -231,25 +231,18 @@ rule plmutils_embed:
 
 rule plmutils_train:
     input: expand("outputs/models/build/plmutils/1_embeddings/{coding_type}_train.npy", coding_type = CODING_TYPES) 
-    output: "outputs/models/build/plmutils/2_model/classifier.joblib"
-    params: modeldir = "outputs/models/plmutils/2_model/"
+    output: directory("outputs/models/build/plmutils/2_model")
     conda: "envs/plmutils.yml"
     shell:
         """
         plmutils train --positive-class-filepath {input[0]} \
             --negative-class-filepath {input[1]} \
-            --model-dirpath {params.modeldir}
+            --model-dirpath {output}
         """
-
-
-# calculate accuracy -- either use a similar script as calculate_rnasamba_model_accuracy.R or see if we can just use a plmutils script
-
-
 
 ##################################################################
 ## Get sequence statistics
 ##################################################################
-
 
 rule get_sequence_descriptors:
     input:
