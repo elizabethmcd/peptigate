@@ -190,17 +190,26 @@ rule filter_sequence_sets:
 ##################################################################
 
 rule plmutils_translate:
+    """
+    This rule takes input nucleotide transcripts, detects the longest open reading frame, and
+    translates it into amino acid sequences.
+    This step is applied to both the training and validation data sets (by expanding over the
+    wildcard dataset_type).
+    However, when processing the training data set, the rule also filters to sequences that are
+    less than 100 amino acids.
+    Otherwise, keep all sequences.
+    We only want to train with short sequences since this our use case (detecting sORFs), but we
+    want to predict the coding status of short and long sequences in the validation set.
+    The if statement is included in this rule (as opposed to having a separate filtering rule) so
+    that the output file naming scheme is consistent.
+    This allows us not to duplicate snakemake rules for downstream plmutils commands.
+    """
     input: "outputs/models/datasets/2_sequence_sets/{coding_type}_{dataset_type}.fa"
     output: "outputs/models/build/plmutils/0_translate/{coding_type}_{dataset_type}.fa"
     conda: "envs/plmutils.yml"
     shell:
         """
         plmutils translate --longest-only --output-filepath {output}_tmp {input}
-        # If this is the training data set, filter to sequences that are less than 100 amino acids.
-        # Otherwise, keep all sequences.
-        # We only want to train with short sequences since this our use case (detecting sORFs).
-        # This is combine with this rule so that the output file naming scheme is consistent,
-        # which allows us not to duplicate snakemake rules for downstream plmutils commands.
         if [ {wildcards.dataset_type} == "train" ]; then
             seqkit seq --max-len 100 -o {output} {output}_tmp
         else
