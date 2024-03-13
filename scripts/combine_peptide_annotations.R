@@ -80,7 +80,8 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, plm
     group_by(peptide_id) %>%
     add_count(peptide_id) %>%
     rename(peptipedia_num_hits = n) %>%
-    top_n(peptipedia_blast_bitscore, n = 1) %>%
+    slice_max(peptipedia_blast_bitscore, n = 1) %>%
+    slice_min(peptipedia_blast_evalue, n = 1) %>%
     ungroup()
   
   characteristics <- read_tsv(characteristics_path)
@@ -88,8 +89,9 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, plm
   peptide_predictions_with_annotations <- peptide_predictions %>%
     left_join(autopeptideml, by = "peptide_id", relationship = "one-to-one") %>%
     left_join(characteristics, by = "peptide_id", relationship = "one-to-one") %>%
-    left_join(deepsig, by = "peptide_id", relationship = "one-to-one") %>% 
-    left_join(peptipedia, by = "peptide_id", relationship = "one-to-one")
+    left_join(peptipedia, by = "peptide_id", relationship = "one-to-one") %>%
+    # some peptides will have two deepsig annotation (signal peptide & chain; allow 1:many)
+    left_join(deepsig, by = "peptide_id", relationship = "one-to-many")
   
   return(peptide_predictions_with_annotations)
 }
