@@ -19,10 +19,10 @@ configfile: "./config.yml"
 INPUT_DIR = Path(config["input_dir"])
 OUTPUT_DIR = Path(config["output_dir"])
 
-SHORT_CONTIGS = Path(config["short_contigs"])
 ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
 ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
-ALL_CONTIGS = Path(config["all_contigs"])
+CONTIGS_SHORTER = Path(config["contigs_shorter_than_r2t_minimum_length"])
+CONTIGS_LONGER = Path(config["contigs_longer_than_r2t_minimum_length"])
 PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 ################################################################################
@@ -32,24 +32,27 @@ PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 rule combine_contigs:
     """
-    By default we assume that transcript provided to this pipeline are reads2transcriptome outputs.
-    Reads2transcriptome outputs two files that contain complete contigs.
-    The first we refer to as short_contigs, which are transcripts output by assemblers that did not
-    meet the r2t runs minimum contig length (by default, 75 nt).
-    The second we refer to as all_contigs and are assembled transcripts that passed the isoform
-    clustering and decontamination steps of r2t.
+    By default we assume that files provided to this pipeline are reads2transcriptome outputs.
+    Reads2transcriptome outputs two files that contain contigs.
+    The first we refer to as contigs_shorter_than_r2t_minimum (or CONTIGS_SHORTER),
+    which are transcripts output by assemblers that did not meet the r2t runs minimum contig length.
+    The second we refer to as contigs_longer_than_r2t_minimum (or CONTIGS_LONGER) and are assembled
+    transcripts that passed the isoform clustering and decontamination steps of r2t.
     We no longer need these pools of transcripts differentiated, so we combine them in this rule. 
+    If your input transcriptome only has one file of assembled contigs, sequences only need to be
+    supplied in contigs_longer_than_r2t_minimum_length.
+    contigs_shorter_than_r2t_minimum_length can be an empty file.
     """
     input:
-        short_contigs=SHORT_CONTIGS,
-        all_contigs=ALL_CONTIGS,
+        contigs_shorter=CONTIGS_SHORTER,
+        contigs_longer=CONTIGS_LONGER,
     output:
         all_contigs=OUTPUT_DIR / "sORF" / "contigs" / "all_input_contigs.fa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-        cat {input.short_contigs} {input.all_contigs} > {output.all_contigs}
+        cat {input.contigs_shorter} {input.contigs_longer} > {output.all_contigs}
         """
 
 
