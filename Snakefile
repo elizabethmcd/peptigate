@@ -190,7 +190,7 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input:
         ORFS_AMINO_ACIDS,
     output:
-        faa=OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
+        faa=OUTPUT_DIR / "cleavage" / "preprocessing" / "noasterisk.faa",
     shell:
         """
         sed '/^[^>]/s/\*//g' {input} > {output}
@@ -202,10 +202,10 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
 
 rule download_nlpprecursor_models:
     output:
-        tar=INPUT_DIR / "models/nlpprecursor/nlpprecursor_models.tar.gz",
-        model=INPUT_DIR / "models/nlpprecursor/models/annotation/model.p",
+        tar=INPUT_DIR / "models" / "nlpprecursor" / "nlpprecursor_models.tar.gz",
+        model=INPUT_DIR / "models" / "nlpprecursor" / "models" / "annotation" / "model.p",
     params:
-        outdir=INPUT_DIR / "models/nlpprecursor",
+        outdir=INPUT_DIR / "models" / "nlpprecursor",
     shell:
         """
         curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
@@ -233,10 +233,10 @@ rule nlpprecursor:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         model=rules.download_nlpprecursor_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_predictions.tsv",
-        peptide=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_peptides.fasta",
+        tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
+        peptide=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.fasta",
     params:
-        modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
+        modelsdir=INPUT_DIR / "models" / "nlpprecursor" / "models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
@@ -267,11 +267,11 @@ rule deeppeptide:
         src=rules.clone_deeppeptide.output.src,
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
     output:
-        json=OUTPUT_DIR / "cleavage/deeppeptide/peptide_predictions.json",
+        json=OUTPUT_DIR / "cleavage" / "deeppeptide" / "peptide_predictions.json",
     conda:
         "envs/deeppeptide.yml"
     params:
-        outdir=OUTPUT_DIR / "cleavage/deeppeptide",
+        outdir=OUTPUT_DIR / "cleavage" / "deeppeptide",
     shell:
         """
         cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {WORKING_DIRPATH}/{input.faa} --output_dir {params.outdir} --output_fmt json
@@ -291,9 +291,9 @@ rule extract_deeppeptide_sequences:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         json=rules.deeppeptide.output.json,
     output:
-        propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
-        peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
-        tsv=OUTPUT_DIR / "cleavage/deeppeptide/predictions.tsv",
+        propeptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "propeptides.faa",
+        peptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "peptides.faa",
+        tsv=OUTPUT_DIR / "cleavage" / "deeppeptide" / "predictions.tsv",
     conda:
         "envs/biopython.yml"
     shell:
@@ -313,7 +313,7 @@ rule combine_peptide_predictions:
         nlpprecursor=rules.nlpprecursor.output.peptide,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide,
     output:
-        peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa",
+        peptide=OUTPUT_DIR / "annotation" / "combined_peptide_predictions" / "peptides.faa",
     shell:
         """
         cat {input} > {output.peptide}
@@ -333,7 +333,7 @@ rule download_peptipedia_database:
     done some quality control on those sequences.
     """
     output:
-        db=INPUT_DIR / "databases/peptipedia.fasta.gz",
+        db=INPUT_DIR / "databases" / "peptipedia.fasta.gz",
     shell:
         """
         curl -JLo {output} https://osf.io/dzycu/download 
@@ -344,9 +344,9 @@ rule make_diamond_db_from_peptipedia_database:
     input:
         db=rules.download_peptipedia_database.output.db,
     output:
-        db=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia.dmnd",
+        db=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia.dmnd",
     params:
-        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
@@ -360,9 +360,9 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "1_blastp" / "matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
@@ -384,7 +384,7 @@ rule run_deepsig:
     input:
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/deepsig/deepsig.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "deepsig" / "deepsig.tsv",
     conda:
         "envs/deepsig.yml"
     shell:
@@ -398,7 +398,7 @@ rule characterize_peptides:
     input:
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/characteristics/peptide_characteristics.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "characteristics" / "peptide_characteristics.tsv",
     conda:
         "envs/peptides.yml"
     shell:
@@ -435,7 +435,7 @@ rule download_autopeptideml_models:
         # to be the rules syntax
         # https://github.com/IBM/AutoPeptideML/issues/6#issuecomment-1989494559
         model=INPUT_DIR
-        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
+        / "models" / "autopeptideml" / "HPO_NegSearch_HP" / "{autopeptideml_model_name}_1" / "apml_config.json",
     shell:
         """
         touch {output} # will become a curl command or something, depending on how models are packaged
@@ -461,9 +461,9 @@ rule run_autopeptideml:
         peptide=rules.combine_peptide_predictions.output.peptide,
         model=rules.download_autopeptideml_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "annotation/autopeptideml/autopeptideml_{autopeptideml_model_name}.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "autopeptideml" / "autopeptideml_{autopeptideml_model_name}.tsv",
     params:
-        modelsdir=INPUT_DIR / "models/autopeptideml/HPO_NegSearch_HP/",
+        modelsdir=INPUT_DIR / "models" / "autopeptideml" / "HPO_NegSearch_HP/",
     conda:
         "envs/autopeptideml.yml"
     shell:
@@ -488,9 +488,9 @@ rule combine_peptide_annotations:
         peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         characteristics=rules.characterize_peptides.output.tsv,
     output:
-        tsv=OUTPUT_DIR / "annotation/peptide_annotations.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
     params:
-        autopeptidemldir=OUTPUT_DIR / "annotation/autopeptideml/",
+        autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
     conda:
         "envs/tidyverse.yml"
     shell:
