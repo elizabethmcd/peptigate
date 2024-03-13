@@ -435,7 +435,11 @@ rule download_autopeptideml_models:
         # to be the rules syntax
         # https://github.com/IBM/AutoPeptideML/issues/6#issuecomment-1989494559
         model=INPUT_DIR
-        / "models" / "autopeptideml" / "HPO_NegSearch_HP" / "{autopeptideml_model_name}_1" / "apml_config.json",
+        / "models"
+        / "autopeptideml"
+        / "HPO_NegSearch_HP"
+        / "{autopeptideml_model_name}_1"
+        / "apml_config.json",
     shell:
         """
         touch {output} # will become a curl command or something, depending on how models are packaged
@@ -461,7 +465,10 @@ rule run_autopeptideml:
         peptide=rules.combine_peptide_predictions.output.peptide,
         model=rules.download_autopeptideml_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "annotation" / "autopeptideml" / "autopeptideml_{autopeptideml_model_name}.tsv",
+        tsv=OUTPUT_DIR
+        / "annotation"
+        / "autopeptideml"
+        / "autopeptideml_{autopeptideml_model_name}.tsv",
     params:
         modelsdir=INPUT_DIR / "models" / "autopeptideml" / "HPO_NegSearch_HP/",
     conda:
