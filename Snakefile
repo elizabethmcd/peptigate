@@ -23,7 +23,7 @@ SHORT_CONTIGS = Path(config["short_contigs"])
 ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
 ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
 ALL_CONTIGS = Path(config["all_contigs"])
-PLMUTILS_MODEL = Path(config["plmutils_model"])
+PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 ################################################################################
 ## sORF prediction
@@ -143,7 +143,7 @@ rule plmutils_predict:
     input:
         embeddings=rules.plmutils_embed.output.npy,
         faa=rules.length_filter_plmutils_translate_output.output.faa,
-        model=PLMUTILS_MODEL,
+        model=PLMUTILS_MODEL_DIR,
     output:
         csv=OUTPUT_DIR / "sORF/plmutils/predictions.csv",
     conda:

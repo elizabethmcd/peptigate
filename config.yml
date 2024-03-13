@@ -21,9 +21,10 @@ output_dir: "outputs/"
 # - orfs_amino_acids: predicted ORFs translated into amino acids. Output by transdecoder. Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
 # - orfs_nucleotides: predicted ORFs as nucleotide sequences. Output by transdecoder. Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
 # - all_contigs: all contigs as nucleotide sequences. Used to identify contigs shorter than X nucleotides (300) to scan for sORFs and to predict lncRNAs, which may have sORFs embedded in them.
+# - plmutils_model_dir: path to the directory for the plmutils model that will predict whether sORFs are coding or non-coding.
 
 short_contigs: "demo/short_contigs.fa"
 orfs_amino_acids: "demo/orfs_amino_acids.faa"
 orfs_nucleotides: "demo/orfs_nucleotides.fa"
 all_contigs: "demo/all_contigs.fa"
-plmutils_model: "inputs/models/plmutils/"
+plmutils_model_dir: "inputs/models/plmutils/"
