@@ -17,12 +17,23 @@ output_dir: "outputs/"
 # All input files are produced by reads2transcriptome.
 # While this is not a strict requirement, using these output files gives us the ability to look at very short contiguous sequences.
 # TER TODO: update names of output files based on Nextflow of reads2transcriptome.
-# - short_contigs: contigs that are shorter than X nucleotides, which do not progress through the assembly pipeline. These may contain sORFs and so are included.
-# - orfs_amino_acids: predicted ORFs translated into amino acids. Output by transdecoder. Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
-# - orfs_nucleotides: predicted ORFs as nucleotide sequences. Output by transdecoder. Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
-# - all_contigs: all contigs as nucleotide sequences. Used to identify contigs shorter than X nucleotides (300) to scan for sORFs and to predict lncRNAs, which may have sORFs embedded in them.
+# - orfs_amino_acids: predicted ORFs translated into amino acids.
+#   Output by transdecoder.
+#   Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
+# - orfs_nucleotides: predicted ORFs as nucleotide sequences. Output by transdecoder.
+#   Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
+# - contigs_shorter_than_r2t_minimum_length: contigs that are shorter than X nucleotides (by default 75bp).
+#   The reads2transcriptome pipeline assembles RNA-seq reads into contigs (transcripts) using multiple assemblers and then merges those assemblies together.
+#   Before merging, very short contigs are removed (<75bp).
+#   However, reads2transcriptome outputs a FASTA file containing these transcripts, which is used as input to peptigate here.
+#   These contigs may contain sORFs and so are included as an input to the peptigate pipeline.
+# - contigs_longer_than_r2t_minimum_length: contigs longer than X nucleotides (default is 75bp).
+#   If the user did not use the reads2transcriptome file to generate their input files, this would be a transcriptome assembly FASTA file in nucleotide format containing transcripts.
+#   Note that the first step of sORF prediction combines the contigs_shorter_than_r2t_minimum_length and contigs_longer_than_r2t_minimum_length files, so there is no need to perform any pre-processing by length.
+# - plmutils_model_dir: path to the directory for the plmutils model that will predict whether sORFs are coding or non-coding.
 
-short_contigs: "demo/short_contigs.fa"
 orfs_amino_acids: "demo/orfs_amino_acids.faa"
 orfs_nucleotides: "demo/orfs_nucleotides.fa"
-all_contigs: "demo/all_contigs.fa"
+contigs_shorter_than_r2t_minimum_length: "demo/contigs_shorter_than_r2t_minimum_length.fa"
+contigs_longer_than_r2t_minimum_length: "demo/contigs_longer_than_r2t_minimum_length.fa"
+plmutils_model_dir: "inputs/models/plmutils/"

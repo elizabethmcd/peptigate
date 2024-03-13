@@ -19,48 +19,40 @@ configfile: "./config.yml"
 INPUT_DIR = Path(config["input_dir"])
 OUTPUT_DIR = Path(config["output_dir"])
 
-SHORT_CONTIGS = Path(config["short_contigs"])
 ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
 ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
-ALL_CONTIGS = Path(config["all_contigs"])
-
+CONTIGS_SHORTER = Path(config["contigs_shorter_than_r2t_minimum_length"])
+CONTIGS_LONGER = Path(config["contigs_longer_than_r2t_minimum_length"])
+PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 ################################################################################
 ## sORF prediction
 ################################################################################
 
 
-rule filter_nt_contigs_to_short:
+rule combine_contigs:
+    """
+    By default we assume that files provided to this pipeline are reads2transcriptome outputs.
+    Reads2transcriptome outputs two files that contain contigs.
+    The first we refer to as contigs_shorter_than_r2t_minimum (or CONTIGS_SHORTER),
+    which are transcripts output by assemblers that did not meet the r2t runs minimum contig length.
+    The second we refer to as contigs_longer_than_r2t_minimum (or CONTIGS_LONGER) and are assembled
+    transcripts that passed the isoform clustering and decontamination steps of r2t.
+    We no longer need these pools of transcripts differentiated, so we combine them in this rule. 
+    If your input transcriptome only has one file of assembled contigs, sequences only need to be
+    supplied in contigs_longer_than_r2t_minimum_length.
+    contigs_shorter_than_r2t_minimum_length can be an empty file.
+    """
     input:
-        all_contigs=ALL_CONTIGS,
-        short_contigs=SHORT_CONTIGS,
+        contigs_shorter=CONTIGS_SHORTER,
+        contigs_longer=CONTIGS_LONGER,
     output:
-        contigs300=temp(OUTPUT_DIR / "outputs/sORF/short_contigs/contigs300.fa"),
-        all_short_contigs=OUTPUT_DIR / "sORF/short_contigs/short_contigs.fa",
+        all_contigs=OUTPUT_DIR / "sORF" / "contigs" / "all_input_contigs.fa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-        seqkit seq --max-len 300 -o {output.contigs300} {input.all_contigs}
-        cat {input.short_contigs} {output.contigs300} > {output.all_short_contigs}
-        """
-
-
-# TER TODO: Add a rule for sORF prediction, either once smallesm is developed,
-#           when there is an accurate sORF rnasamba model,
-#           or using another tool from Singh & Roy.
-
-
-rule filter_nt_contigs_to_long:
-    input:
-        all_contigs=ALL_CONTIGS,
-    output:
-        long_contigs=temp(OUTPUT_DIR / "sORF/long_contigs/contigs300.fa"),
-    conda:
-        "envs/seqkit.yml"
-    shell:
-        """
-        seqkit seq --min-len 301 -o {output.long_contigs} {input.all_contigs}
+        cat {input.contigs_shorter} {input.contigs_longer} > {output.all_contigs}
         """
 
 
@@ -68,13 +60,12 @@ rule get_coding_contig_names:
     """
     Extract amino acid contig names and remove everything after the first period, 
     which are isoform labels.
-    This file will be used to select all contigs that DO NOT encode ORFs, 
-    according to transdecoder.
+    This file will be used to select all contigs that DID NOT have a transdecoder-detected ORFs. 
     """
     input:
         ORFS_AMINO_ACIDS,
     output:
-        names=OUTPUT_DIR / "sORF/long_contigs/orfs_amino_acid_names.txt",
+        names=OUTPUT_DIR / "sORF" / "contigs" / "orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -83,19 +74,20 @@ rule get_coding_contig_names:
         """
 
 
-rule filter_long_contigs_to_no_predicted_ORF:
+rule filter_contigs_to_no_predicted_ORF:
     """
-    Many of the contigs in the full transcriptome have predicted ORFs.
-    The names of these contigs are recorded in the transdecoder input files (*pep & *cds, orfs_*).
-    By definition, these contigs are not noncoding RNAs, 
-    so they don't need to be considered for classification as long noncoding RNAs (lncRNA).
-    This step removes the contigs that contain ORFs.
+    The r2t pipeline runs transdecoder to predict open reading frames (ORFs) from transcripts.
+    By default, only ORFs that are longer than 100 amino acids are kept by transdecoder.
+    The peptigate pipeline predicts peptides that are 100 amino acids or shorter.
+    This rule eliminates transcripts that contained a transdecoder-predicted ORF.
+    It keeps all other transcripts, regardless of length, to investigate the presence of an sORF
+    later in the pipeline.
     """
     input:
-        fa=rules.filter_nt_contigs_to_long.output.long_contigs,
+        fa=rules.combine_contigs.output.all_contigs,
         names=rules.get_coding_contig_names.output.names,
     output:
-        fa=OUTPUT_DIR / "sORF/long_contigs/long_contigs_no_predicted_orf.fa",
+        fa=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_transdecoder_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -104,70 +96,92 @@ rule filter_long_contigs_to_no_predicted_ORF:
         """
 
 
-rule download_rnasamba_model:
+rule plmutils_translate:
     """
-    Place holder rule.
-    For now, the workflow uses the model output by build_rnasamba_euk_model.snakefile, 
-    which is available locally from running it.
-    """
-    output:
-        model=OUTPUT_DIR / "models/rnasamba/build/3_model/eu_rnasamba.hdf5",
-    shell:
-        """
-        curl -JLo {output.model} # TODO add URL for download
-        """
-
-
-rule pip_install_rnasamba_no_deps:
-    """
-    To take advantage of nvidia GPU on AWS instance 
-    ("Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122" ami-07eb000b3340966b0),
-    we need to install specific versions of tensorflow and other dependencies.
-    This is accomplished in part in the envs/rnasamba.yml file, 
-    however rnasamba itself is not installed there because we need to use the command:
-    pip install --no-deps rnasamba
-    and there is no way to specify the "--no-deps" flag in a yaml file.
-    This rule installs rnasamba into the conda-generated environment.
-    Note the output path is the same as that used by curate_datasets_and_build_models.snakefile, 
-    as this conda env will already be present and configured if that snakefile has been executed.
-    """
-    output:
-        pip="outputs/models/build/rnasamba/rnasamba_installed.txt",
-    conda:
-        "envs/rnasamba.yml"
-    shell:
-        """
-        pip install 'nvidia-tensorflow~=1.15'
-        pip install --no-deps rnasamba # used version 0.2.5
-        touch {output}
-        """
-
-
-rule rnasamba:
-    """
-    The eukaryote_rnasamba.hdf5 model is only accurate on longer contigs.
-    It assesses whether they are long noncoding RNAs.
-    However, lncRNAs often have sORFs that encode peptides.
-    This rule runs RNAsamba on longer contigs (>300nt) that were not predicted by transdecoder to 
-    contain ORFs.
+    This rule takes input nucleotide transcripts, detects the longest open reading frame, and
+    translates it into amino acid sequences.
     """
     input:
-        # TER TODO: update path when model is downloaded
-        pip=rules.pip_install_rnasamba_no_deps.output.pip,
-        model=rules.download_rnasamba_model.output.model,
-        contigs=rules.filter_long_contigs_to_no_predicted_ORF.output.fa,
+        rules.filter_contigs_to_no_predicted_ORF.output.fa,
     output:
-        tsv=OUTPUT_DIR / "sORF/long_contigs/rnasamba/classification.tsv",
-        fa=OUTPUT_DIR / "sORF/long_contigs/rnasamba/predicted_proteins.fa",
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs.faa",
     conda:
-        "envs/rnasamba.yml"
+        "envs/plmutils.yml"
     shell:
         """
-        rnasamba classify -p {output.fa} {output.tsv} {input.contigs} {input.model}
+        plmutils translate --longest-only --output-filepath {output} {input}
         """
 
 
-## TER TODO: predict sORFs from lncRNAs
+rule length_filter_plmutils_translate_output:
+    input:
+        rules.plmutils_translate.output.faa,
+    output:
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs_filtered.faa",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        seqkit seq --max-len 100 -o {output} {input}
+        """
+
+
+rule plmutils_embed:
+    """
+    This rule embeds amino acid sequences produced by plmutils translated into the embedding space
+    of a protein large language model.
+    For now, plmutils only supports ESM.
+    We use the 8M model because it is fast and there is some evidence that it works well for other
+    peptide prediction tasks (https://www.biorxiv.org/content/10.1101/2023.11.13.566825v2).
+    The parameter --layer-ind -1 means to extract the embedding from the last layer of the model.
+    """
+    input:
+        rules.length_filter_plmutils_translate_output.output.faa,
+    output:
+        npy=OUTPUT_DIR / "sORF" / "plmutils" / "embedded_contigs_filtered.npy",
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils embed --model-name esm2_t6_8M_UR50D \
+            --layer-ind -1 \
+            --output-filepath {output.npy} \
+            {input}
+        """
+
+
+rule plmutils_predict:
+    input:
+        embeddings=rules.plmutils_embed.output.npy,
+        faa=rules.length_filter_plmutils_translate_output.output.faa,
+        model=PLMUTILS_MODEL_DIR,
+    output:
+        csv=OUTPUT_DIR / "sORF" / "plmutils" / "predictions.csv",
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils predict --model-dirpath {input.model} \
+            --embeddings-filepath {input.embeddings} \
+            --fasta-filepath {input.faa} \
+            --output-filepath {output.csv}
+        """
+
+
+rule extract_plmutils_predicted_peptides:
+    input:
+        csv=rules.plmutils_predict.output.csv,
+        faa=rules.length_filter_plmutils_translate_output.output.faa,
+    output:
+        names=OUTPUT_DIR / "sORF" / "plmutils" / "peptide_names.faa",
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "peptides.faa",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        grep "positive" {input.csv} | cut -d, -f1 > {output.names} 
+        seqkit grep -f {output.names} {input.faa} -o {output.faa}
+        """
 
 
 ################################################################################
@@ -179,7 +193,7 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
     input:
         ORFS_AMINO_ACIDS,
     output:
-        faa=OUTPUT_DIR / "cleavage/preprocessing/noasterisk.faa",
+        faa=OUTPUT_DIR / "cleavage" / "preprocessing" / "noasterisk.faa",
     shell:
         """
         sed '/^[^>]/s/\*//g' {input} > {output}
@@ -191,10 +205,10 @@ rule remove_stop_codon_asterisk_from_transdecoder_ORFs:
 
 rule download_nlpprecursor_models:
     output:
-        tar=INPUT_DIR / "models/nlpprecursor/nlpprecursor_models.tar.gz",
-        model=INPUT_DIR / "models/nlpprecursor/models/annotation/model.p",
+        tar=INPUT_DIR / "models" / "nlpprecursor" / "nlpprecursor_models.tar.gz",
+        model=INPUT_DIR / "models" / "nlpprecursor" / "models" / "annotation" / "model.p",
     params:
-        outdir=INPUT_DIR / "models/nlpprecursor",
+        outdir=INPUT_DIR / "models" / "nlpprecursor",
     shell:
         """
         curl -JLo {output.tar} https://github.com/magarveylab/NLPPrecursor/releases/download/1.0/nlpprecursor_models.tar.gz
@@ -222,10 +236,10 @@ rule nlpprecursor:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         model=rules.download_nlpprecursor_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_predictions.tsv",
-        peptide=OUTPUT_DIR / "cleavage/nlpprecursor/nlpprecursor_peptides.fasta",
+        tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
+        peptide=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.fasta",
     params:
-        modelsdir=INPUT_DIR / "models/nlpprecursor/models/",
+        modelsdir=INPUT_DIR / "models" / "nlpprecursor" / "models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
@@ -256,11 +270,11 @@ rule deeppeptide:
         src=rules.clone_deeppeptide.output.src,
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
     output:
-        json=OUTPUT_DIR / "cleavage/deeppeptide/peptide_predictions.json",
+        json=OUTPUT_DIR / "cleavage" / "deeppeptide" / "peptide_predictions.json",
     conda:
         "envs/deeppeptide.yml"
     params:
-        outdir=OUTPUT_DIR / "cleavage/deeppeptide",
+        outdir=OUTPUT_DIR / "cleavage" / "deeppeptide",
     shell:
         """
         cd cloned_repositories/DeepPeptide/predictor && python3 predict.py --fastafile {WORKING_DIRPATH}/{input.faa} --output_dir {params.outdir} --output_fmt json
@@ -280,9 +294,9 @@ rule extract_deeppeptide_sequences:
         faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         json=rules.deeppeptide.output.json,
     output:
-        propeptide=OUTPUT_DIR / "cleavage/deeppeptide/propeptides.faa",
-        peptide=OUTPUT_DIR / "cleavage/deeppeptide/peptides.faa",
-        tsv=OUTPUT_DIR / "cleavage/deeppeptide/predictions.tsv",
+        propeptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "propeptides.faa",
+        peptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "peptides.faa",
+        tsv=OUTPUT_DIR / "cleavage" / "deeppeptide" / "predictions.tsv",
     conda:
         "envs/biopython.yml"
     shell:
@@ -296,15 +310,13 @@ rule extract_deeppeptide_sequences:
 ################################################################################
 
 
-# TER TODO: add sORF predictions
-
-
 rule combine_peptide_predictions:
     input:
+        sorf=rules.extract_plmutils_predicted_peptides.output.faa,
         nlpprecursor=rules.nlpprecursor.output.peptide,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide,
     output:
-        peptide=OUTPUT_DIR / "annotation/combined_peptide_predictions/peptides.faa",
+        peptide=OUTPUT_DIR / "annotation" / "combined_peptide_predictions" / "peptides.faa",
     shell:
         """
         cat {input} > {output.peptide}
@@ -324,7 +336,7 @@ rule download_peptipedia_database:
     done some quality control on those sequences.
     """
     output:
-        db=INPUT_DIR / "databases/peptipedia.fasta.gz",
+        db=INPUT_DIR / "databases" / "peptipedia.fasta.gz",
     shell:
         """
         curl -JLo {output} https://osf.io/dzycu/download 
@@ -335,9 +347,9 @@ rule make_diamond_db_from_peptipedia_database:
     input:
         db=rules.download_peptipedia_database.output.db,
     output:
-        db=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia.dmnd",
+        db=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia.dmnd",
     params:
-        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
@@ -351,9 +363,9 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/peptipedia/1_blastp/matches.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "1_blastp" / "matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "annotation/peptipedia/0_diamond_db/peptipedia",
+        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
@@ -375,7 +387,7 @@ rule run_deepsig:
     input:
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/deepsig/deepsig.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "deepsig" / "deepsig.tsv",
     conda:
         "envs/deepsig.yml"
     shell:
@@ -389,7 +401,7 @@ rule characterize_peptides:
     input:
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation/characteristics/peptide_characteristics.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "characteristics" / "peptide_characteristics.tsv",
     conda:
         "envs/peptides.yml"
     shell:
@@ -418,6 +430,25 @@ AUTOPEPTIDEML_MODEL_NAMES = [
 ]
 
 
+rule download_autopeptideml_models:
+    output:
+        # TER TODO: the authors of autopeptideml sent me these models.
+        # They said they're working on uploading them.
+        # Once they're available, I need to add a rule to download them and update the input here
+        # to be the rules syntax
+        # https://github.com/IBM/AutoPeptideML/issues/6#issuecomment-1989494559
+        model=INPUT_DIR
+        / "models"
+        / "autopeptideml"
+        / "HPO_NegSearch_HP"
+        / "{autopeptideml_model_name}_1"
+        / "apml_config.json",
+    shell:
+        """
+        touch {output} # will become a curl command or something, depending on how models are packaged
+        """
+
+
 rule run_autopeptideml:
     """
     AutoPeptideML predicts the bioactivity of a peptide based on user-supplied models.
@@ -435,16 +466,14 @@ rule run_autopeptideml:
     """
     input:
         peptide=rules.combine_peptide_predictions.output.peptide,
-        # TER TODO: the authors of autopeptideml sent me these models.
-        # They said they're working on uploading them.
-        # Once they're available, I need to add a rule to download them and update the input here
-        # to be the rules syntax
-        model=INPUT_DIR
-        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
+        model=rules.download_autopeptideml_models.output.model,
     output:
-        tsv=OUTPUT_DIR / "annotation/autopeptideml/autopeptideml_{autopeptideml_model_name}.tsv",
+        tsv=OUTPUT_DIR
+        / "annotation"
+        / "autopeptideml"
+        / "autopeptideml_{autopeptideml_model_name}.tsv",
     params:
-        modelsdir=INPUT_DIR / "models/autopeptideml/HPO_NegSearch_HP/",
+        modelsdir=INPUT_DIR / "models" / "autopeptideml" / "HPO_NegSearch_HP/",
     conda:
         "envs/autopeptideml.yml"
     shell:
@@ -461,6 +490,7 @@ rule combine_peptide_annotations:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
+        plmutils=rules.plmutils_predict.output.csv,
         autopeptideml=expand(
             rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
         ),
@@ -468,9 +498,9 @@ rule combine_peptide_annotations:
         peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         characteristics=rules.characterize_peptides.output.tsv,
     output:
-        tsv=OUTPUT_DIR / "annotation/peptide_annotations.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
     params:
-        autopeptidemldir=OUTPUT_DIR / "annotation/autopeptideml/",
+        autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
     conda:
         "envs/tidyverse.yml"
     shell:
@@ -478,6 +508,7 @@ rule combine_peptide_annotations:
         Rscript scripts/combine_peptide_annotations.R \
             --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
+            --plmutils_path {input.plmutils} \
             --autopeptideml_dir {params.autopeptidemldir} \
             --deepsig_path {input.deepsig} \
             --peptipedia_path {input.peptipedia} \
@@ -494,9 +525,7 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.rnasamba.output.tsv,
-        rules.nlpprecursor.output.peptide,
-        rules.extract_deeppeptide_sequences.output.peptide,
+        rules.combine_peptide_annotations.output.tsv,
 
 
 rule predict_sORF:
@@ -505,7 +534,7 @@ rule predict_sORF:
     snakemake predict_sORF --software-deployment-method conda -j 8 
     """
     input:
-        rules.rnasamba.output.tsv,
+        sorf=rules.extract_plmutils_predicted_peptides.output.faa,
 
 
 rule predict_cleavage:
@@ -514,4 +543,5 @@ rule predict_cleavage:
     snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.combine_peptide_annotations.output.tsv,
+        rules.nlpprecursor.output.peptide,
+        rules.extract_deeppeptide_sequences.output.peptide,
