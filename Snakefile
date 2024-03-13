@@ -419,6 +419,21 @@ AUTOPEPTIDEML_MODEL_NAMES = [
 ]
 
 
+rule download_autopeptideml_models:
+    output:
+        # TER TODO: the authors of autopeptideml sent me these models.
+        # They said they're working on uploading them.
+        # Once they're available, I need to add a rule to download them and update the input here
+        # to be the rules syntax
+        # https://github.com/IBM/AutoPeptideML/issues/6#issuecomment-1989494559
+        model=INPUT_DIR
+        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
+    shell:
+        """
+        touch {output} # will become a curl command or something, depending on how models are packaged
+        """
+
+
 rule run_autopeptideml:
     """
     AutoPeptideML predicts the bioactivity of a peptide based on user-supplied models.
@@ -436,12 +451,7 @@ rule run_autopeptideml:
     """
     input:
         peptide=rules.combine_peptide_predictions.output.peptide,
-        # TER TODO: the authors of autopeptideml sent me these models.
-        # They said they're working on uploading them.
-        # Once they're available, I need to add a rule to download them and update the input here
-        # to be the rules syntax
-        model=INPUT_DIR
-        / "models/autopeptideml/HPO_NegSearch_HP/{autopeptideml_model_name}_1/apml_config.json",
+        model=rules.download_autopeptideml_models.output.model,
     output:
         tsv=OUTPUT_DIR / "annotation/autopeptideml/autopeptideml_{autopeptideml_model_name}.tsv",
     params:
