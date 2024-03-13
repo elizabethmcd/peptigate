@@ -124,6 +124,14 @@ rule length_filter_plmutils_translate_output:
 
 
 rule plmutils_embed:
+    """
+    This rule embeds amino acid sequences produced by plmutils translated into the embedding space
+    of a protein large language model.
+    For now, plmutils only supports ESM.
+    We use the 8M model because it is fast and there is some evidence that it works well for other
+    peptide prediction tasks (https://www.biorxiv.org/content/10.1101/2023.11.13.566825v2).
+    The parameter --layer-ind -1 means to extract the embedding from the last layer of the model.
+    """
     input:
         rules.length_filter_plmutils_translate_output.output.faa,
     output:
