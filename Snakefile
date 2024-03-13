@@ -44,7 +44,7 @@ rule combine_contigs:
         short_contigs=SHORT_CONTIGS,
         all_contigs=ALL_CONTIGS,
     output:
-        all_contigs=OUTPUT_DIR / "sORF/contigs/all_input_contigs.fa",
+        all_contigs=OUTPUT_DIR / "sORF" / "contigs" / "all_input_contigs.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -62,7 +62,7 @@ rule get_coding_contig_names:
     input:
         ORFS_AMINO_ACIDS,
     output:
-        names=OUTPUT_DIR / "sORF/contigs/orfs_amino_acid_names.txt",
+        names=OUTPUT_DIR / "sORF" / "contigs" / "orfs_amino_acid_names.txt",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -84,7 +84,7 @@ rule filter_contigs_to_no_predicted_ORF:
         fa=rules.combine_contigs.output.all_contigs,
         names=rules.get_coding_contig_names.output.names,
     output:
-        fa=OUTPUT_DIR / "sORF/contigs/contigs_with_no_transdecoder_predicted_orf.fa",
+        fa=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_transdecoder_predicted_orf.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -101,7 +101,7 @@ rule plmutils_translate:
     input:
         rules.filter_contigs_to_no_predicted_ORF.output.fa,
     output:
-        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs.faa",
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs.faa",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -114,7 +114,7 @@ rule length_filter_plmutils_translate_output:
     input:
         rules.plmutils_translate.output.faa,
     output:
-        faa=OUTPUT_DIR / "sORF/plmutils/translated_contigs_filtered.faa",
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs_filtered.faa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -135,7 +135,7 @@ rule plmutils_embed:
     input:
         rules.length_filter_plmutils_translate_output.output.faa,
     output:
-        npy=OUTPUT_DIR / "sORF/plmutils/embedded_contigs_filtered.npy",
+        npy=OUTPUT_DIR / "sORF" / "plmutils" / "embedded_contigs_filtered.npy",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -153,7 +153,7 @@ rule plmutils_predict:
         faa=rules.length_filter_plmutils_translate_output.output.faa,
         model=PLMUTILS_MODEL_DIR,
     output:
-        csv=OUTPUT_DIR / "sORF/plmutils/predictions.csv",
+        csv=OUTPUT_DIR / "sORF" / "plmutils" / "predictions.csv",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -170,8 +170,8 @@ rule extract_plmutils_predicted_peptides:
         csv=rules.plmutils_predict.output.csv,
         faa=rules.length_filter_plmutils_translate_output.output.faa,
     output:
-        names=OUTPUT_DIR / "sORF/plmutils/peptide_names.faa",
-        faa=OUTPUT_DIR / "sORF/plmutils/peptides.faa",
+        names=OUTPUT_DIR / "sORF" / "plmutils" / "peptide_names.faa",
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "peptides.faa",
     conda:
         "envs/seqkit.yml"
     shell:
