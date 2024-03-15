@@ -15,6 +15,7 @@ from nlpprecursor.classification.data import DatasetGenerator as CDG
 sys.modules["protai"] = nlpprecursor
 
 
+
 def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     Attempts to call the predict function up to a maximum number of attempts.
@@ -23,7 +24,6 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     the function produces a RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED.
     Second execution succeeds.
     Execution fails on the @classmethod predict(), on the line `predictions = model(tokens)[0]`.
-    Secondly, it catches KeyError 'U' for failed predictions.
     Args:
         predict_function: The prediction function to call (CDG.predict since it's the first called).
         *args: Arguments to pass to the prediction function.
@@ -31,23 +31,21 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
         sleep_time (int or float): Time to wait between attempts, in seconds.
     Returns:
         The result of the prediction function if successful.
-        The result 'undetermined' if KeyError 'U' is raised.
-        The result 'failed' in any other circumstances.
+    Raises:
+        Exception: Re-raises the last exception if all attempts fail.
     """
     for attempt in range(max_attempts):
         try:
             return predict_function(*args)
-        except (RuntimeError, KeyError) as e:
+        except RuntimeError as e:
             print(f"Attempt {attempt + 1} failed with error: {e}")
-            if isinstance(e, KeyError):
-                print("KeyError encountered. Labeling as undetermined and continuing.")
-                return "undetermined"  # Specific catch for the KeyError to handle the 'U' error
             if attempt + 1 < max_attempts:
                 print(f"Retrying in {sleep_time} seconds...")
-                time.sleep(sleep_time)
+                time.sleep(sleep_time)  # Wait a bit before retrying
             else:
-                print("All attempts failed. Moving to next protein.")
-                return "failed"
+                print("All attempts failed. Raising the last exception.")
+                raise  # Re-raise the last exception if out of attempts
+
 
 def predict_ripp_sequences(models_dir, input_fasta):
     """
@@ -73,23 +71,44 @@ def predict_ripp_sequences(models_dir, input_fasta):
     annot_model_path = annot_model_dir / "model.p"
     annot_vocab_path = annot_model_dir / "vocab.pkl"
 
-    #sequences = []
-    ripp_sequence_predictions = []  # List to hold successful predictions
+    sequences = []
 
-    # First, process each sequence individually for class predictions
     for record in SeqIO.parse(input_fasta, "fasta"):
-        sequence = {"sequence": str(record.seq), "name": record.id}
-        prediction = robust_predict(CDG.predict, class_model_path, class_vocab_path, [sequence])
-        if prediction != "undetermined" and prediction != "failed":
-            if prediction[0]["class_predictions"][0]["class"] != "NONRIPP":
-                ripp_sequence_predictions.append((sequence, prediction[0]["class_predictions"][0]))
+        sequences.append({"sequence": str(record.seq), "name": record.id})
 
-    # Now, for each successfully predicted sequence, predict the cleavage
+    try:
+        class_predictions = robust_predict(
+            CDG.predict, class_model_path, class_vocab_path, sequences
+        )
+    except Exception as final_error:
+        print(f"Failed to predict class after several attempts: {final_error}")
+        return []
+
+    # Convert class_predictions to a dictionary for easier access
+    class_predictions_dict = {pred["name"]: pred["class_predictions"][0] for pred in class_predictions}
+
+    # Filter out NONRIPP sequences based on class predictions before cleavage prediction
+    nonripp_sequences = [seq for seq in sequences if class_predictions_dict[seq["name"]]["class"] != "NONRIPP"]
+
+    if not nonripp_sequences:
+        print("All sequences were classified as NONRIPP.")
+        return []
+
+    # Predict cleavage only for non-NONRIPP sequences
+    cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, nonripp_sequences)
+    # Convert cleavage_predictions to a dictionary for easier access
+    cleavage_predictions_dict = {pred["name"]: pred["cleavage_prediction"] for pred in cleavage_predictions}
+
     filtered_predictions = []
-    for sequence, class_pred in ripp_sequence_predictions:
-        cleavage_prediction = ADG.predict(annot_model_path, annot_vocab_path, [sequence])
-        cleavage_pred = cleavage_prediction[0]["cleavage_prediction"]
-        filtered_predictions.append((sequence, class_pred, cleavage_pred))
+    for sequence in nonripp_sequences:
+        name = sequence["name"]
+        # We already know each sequence here is not NONRIPP, so directly get the predictions
+        class_pred = class_predictions_dict[name]
+        if name in cleavage_predictions_dict:
+            cleavage_pred = cleavage_predictions_dict[name]
+            filtered_predictions.append((sequence, class_pred, cleavage_pred))
+        else:
+            print(f"No cleavage prediction for sequence {name}. Skipping.")
 
     return filtered_predictions
 
