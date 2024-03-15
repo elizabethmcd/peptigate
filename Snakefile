@@ -215,6 +215,21 @@ rule download_nlpprecursor_models:
         tar xf {output.tar} -C {params.outdir} 
         """
 
+rule filter_protein_sequences_with_nonstandard_amino_acids:
+    """
+    The NLPPrecursor tool only uses the 20 standard amino acids.
+    This script removes sequences with nonstandard amino acids in the sequence.
+    """
+    input:
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+    output:
+        faa=OUTPUT_DIR / "cleavage" / "preprocessing" / "noasterisk_nononstandardaa.faa",
+    conda:
+        "envs/nlpprecursor.yml"
+    shell:
+        """
+        python scripts/filter_protein_sequences_with_nonstandard_amino_acids.py --input {input} --output {output}
+        """
 
 rule nlpprecursor:
     """
@@ -233,7 +248,7 @@ rule nlpprecursor:
     to RiPP family), or a non-precursor peptide. A total of 14 classes are identified (n_class)."
     """
     input:
-        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        faa=rules.filter_protein_sequences_with_nonstandard_amino_acids.output.faa,
         model=rules.download_nlpprecursor_models.output.model,
     output:
         tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
