@@ -215,6 +215,7 @@ rule download_nlpprecursor_models:
         tar xf {output.tar} -C {params.outdir} 
         """
 
+
 rule filter_protein_sequences_with_nonstandard_amino_acids:
     """
     The NLPPrecursor tool only uses the 20 standard amino acids.
@@ -230,6 +231,7 @@ rule filter_protein_sequences_with_nonstandard_amino_acids:
         """
         python scripts/filter_protein_sequences_with_nonstandard_amino_acids.py --input {input} --output {output}
         """
+
 
 rule nlpprecursor:
     """

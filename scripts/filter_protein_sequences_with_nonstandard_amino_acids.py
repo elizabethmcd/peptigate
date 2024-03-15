@@ -16,7 +16,9 @@ M, A, N, F, D, L, V, Q, K, S, G, Y, T, C, R, H, I, P, E, W, X.
 """
 
 import argparse
+
 from Bio import SeqIO
+
 
 def is_allowed_sequence(seq, allowed_amino_acids):
     """
@@ -31,6 +33,7 @@ def is_allowed_sequence(seq, allowed_amino_acids):
     """
     return all(amino_acid in allowed_amino_acids for amino_acid in seq)
 
+
 def filter_fasta(input_file, output_file, allowed_amino_acids):
     """
     Filter sequences in a FASTA file based on allowed amino acids.
@@ -40,18 +43,43 @@ def filter_fasta(input_file, output_file, allowed_amino_acids):
     - output_file (str): Path to the output FASTA file where filtered sequences are saved.
     - allowed_amino_acids (set): A set of allowed amino acid single-letter codes.
     """
-    with open(output_file, 'w') as filtered:
+    with open(output_file, "w") as filtered:
         for record in SeqIO.parse(input_file, "fasta"):
             if is_allowed_sequence(str(record.seq), allowed_amino_acids):
                 SeqIO.write(record, filtered, "fasta")
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Filter FASTA files to include only sequences with specific amino acids.")
+    parser = argparse.ArgumentParser(
+        description="Filter FASTA files to include only sequences with specific amino acids."
+    )
     parser.add_argument("--input", required=True, help="Path to the input FASTA file.")
     parser.add_argument("--output", required=True, help="Path to the output FASTA file.")
 
     args = parser.parse_args()
 
-    allowed_amino_acids = {'M', 'A', 'N', 'F', 'D', 'L', 'V', 'Q', 'K', 'S', 'G', 'Y', 'T', 'C', 'R', 'H', 'I', 'P', 'E', 'W', 'X'}
+    allowed_amino_acids = {
+        "M",
+        "A",
+        "N",
+        "F",
+        "D",
+        "L",
+        "V",
+        "Q",
+        "K",
+        "S",
+        "G",
+        "Y",
+        "T",
+        "C",
+        "R",
+        "H",
+        "I",
+        "P",
+        "E",
+        "W",
+        "X",
+    }
 
     filter_fasta(args.input, args.output, allowed_amino_acids)
