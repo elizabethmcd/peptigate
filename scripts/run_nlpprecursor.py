@@ -23,6 +23,7 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     the function produces a RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED.
     Second execution succeeds.
     Execution fails on the @classmethod predict(), on the line `predictions = model(tokens)[0]`.
+    Secondly, it catches KeyError 'U' for failed predictions.
     Args:
         predict_function: The prediction function to call (CDG.predict since it's the first called).
         *args: Arguments to pass to the prediction function.
@@ -30,22 +31,23 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
         sleep_time (int or float): Time to wait between attempts, in seconds.
     Returns:
         The result of the prediction function if successful.
-    Raises:
-        Exception: Re-raises the last exception if all attempts fail.
+        The result 'undetermined' if KeyError 'U' is raised.
+        The result 'failed' in any other circumstances.
     """
     for attempt in range(max_attempts):
         try:
-            # Try to make the prediction
             return predict_function(*args)
-        except RuntimeError as e:
+        except (RuntimeError, KeyError) as e:
             print(f"Attempt {attempt + 1} failed with error: {e}")
+            if isinstance(e, KeyError):
+                print("KeyError encountered. Labeling as undetermined and continuing.")
+                return "undetermined"  # Specific catch for the KeyError to handle the 'U' error
             if attempt + 1 < max_attempts:
                 print(f"Retrying in {sleep_time} seconds...")
-                time.sleep(sleep_time)  # Wait a bit before retrying
+                time.sleep(sleep_time)
             else:
-                print("All attempts failed. Raising the last exception.")
-                raise  # Re-raise the last exception if out of attempts
-
+                print("All attempts failed. Moving to next protein.")
+                return "failed"
 
 def predict_ripp_sequences(models_dir, input_fasta):
     """
@@ -71,29 +73,23 @@ def predict_ripp_sequences(models_dir, input_fasta):
     annot_model_path = annot_model_dir / "model.p"
     annot_vocab_path = annot_model_dir / "vocab.pkl"
 
-    sequences = []
+    #sequences = []
+    ripp_sequence_predictions = []  # List to hold successful predictions
 
+    # First, process each sequence individually for class predictions
     for record in SeqIO.parse(input_fasta, "fasta"):
-        sequences.append({"sequence": str(record.seq), "name": record.id})
+        sequence = {"sequence": str(record.seq), "name": record.id}
+        prediction = robust_predict(CDG.predict, class_model_path, class_vocab_path, [sequence])
+        if prediction != "undetermined" and prediction != "failed":
+            if prediction[0]["class_predictions"][0]["class"] != "NONRIPP":
+                ripp_sequence_predictions.append((sequence, prediction[0]["class_predictions"][0]))
 
-    try:
-        class_predictions = robust_predict(
-            CDG.predict, class_model_path, class_vocab_path, sequences
-        )
-    except Exception as final_error:
-        print(f"Failed to predict class after several attempts: {final_error}")
-        class_predictions = []
-
-    cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, sequences)
-
-    # Filter out NONRIPP class predictions and pair sequences with their predictions.`
-    # NONRIPP is the negative class.
+    # Now, for each successfully predicted sequence, predict the cleavage
     filtered_predictions = []
-    for ind, sequence in enumerate(sequences):
-        class_pred = class_predictions[ind]["class_predictions"][0] if class_predictions else None
-        cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
-        if class_pred and class_pred["class"] != "NONRIPP":
-            filtered_predictions.append((sequence, class_pred, cleavage_pred))
+    for sequence, class_pred in ripp_sequence_predictions:
+        cleavage_prediction = ADG.predict(annot_model_path, annot_vocab_path, [sequence])
+        cleavage_pred = cleavage_prediction[0]["cleavage_prediction"]
+        filtered_predictions.append((sequence, class_pred, cleavage_pred))
 
     return filtered_predictions
 
