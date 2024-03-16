@@ -101,8 +101,8 @@ combine_peptide_annotations <- function(autopeptideml_dir, deepsig_path,
   
   peptide_predictions_with_annotations <- autopeptideml %>%
     left_join(characteristics, by = "peptide_id", relationship = "one-to-one") %>%
-    left_join(peptipedia, by = "peptide_id") %>%
-    left_join(deepsig, by = "peptide_id")
+    left_join(peptipedia, by = "peptide_id", relationship = "one-to-many") %>%
+    left_join(deepsig, by = "peptide_id", relationship = "many-to-many")
   
   return(peptide_predictions_with_annotations)
 }
@@ -111,9 +111,8 @@ predictions_df<- combine_peptide_predictions(nlpprecursor_path = args$nlpprecurs
                                              plmutils_path = args$plmutils_path)
 write_tsv(predictions_df, args$output_predictions_path)
 
-
 annotations_df<- combine_peptide_annotations(autopeptideml_dir = args$autopeptideml_dir,
                                              deepsig_path = args$deepsig_path,
                                              peptipedia_path = args$peptipedia_path,
                                              characteristics_path = args$characteristics_path)
-write_tsv(annotations_df, args$output_anotations_path)
+write_tsv(annotations_df, args$output_annotations_path)
