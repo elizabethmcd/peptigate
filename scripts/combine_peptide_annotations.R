@@ -110,7 +110,7 @@ combine_peptide_annotations <- function(autopeptideml_dir, deepsig_path,
 predictions_df<- combine_peptide_predictions(nlpprecursor_path = args$nlpprecursor_path,
                                              deeppeptide_path = args$deeppeptide_path,
                                              plmutils_path = args$plmutils_path)
-write_tsv(annotations_df, args$output_predictions_path)
+write_tsv(predictions_df, args$output_predictions_path)
 
 
 annotations_df<- combine_peptide_annotations(autopeptideml_dir = args$autopeptideml_dir,
