@@ -515,7 +515,8 @@ rule combine_peptide_annotations:
         peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         characteristics=rules.characterize_peptides.output.tsv,
     output:
-        tsv=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
+        tsv1=OUTPUT_DIR / "annotation" / "peptide_predictions.tsv",
+        tsv2=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
     params:
         autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
     conda:
@@ -530,7 +531,8 @@ rule combine_peptide_annotations:
             --deepsig_path {input.deepsig} \
             --peptipedia_path {input.peptipedia} \
             --characteristics_path {input.characteristics} \
-            --output_path {output.tsv}
+            --output_predictions_path {output.tsv1} \
+            --output_annotations_path {output.tsv2}
         """
 
 
@@ -542,7 +544,7 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.combine_peptide_annotations.output.tsv,
+        rules.combine_peptide_annotations.output.tsv1,
 
 
 rule predict_sORF:
