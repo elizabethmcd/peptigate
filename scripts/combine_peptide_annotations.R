@@ -99,8 +99,7 @@ combine_peptide_annotations <- function(autopeptideml_dir, deepsig_path,
   
   characteristics <- read_tsv(characteristics_path)
   
-  peptide_predictions_with_annotations <- peptide_predictions %>%
-    left_join(autopeptideml, by = "peptide_id", relationship = "one-to-one") %>%
+  peptide_predictions_with_annotations <- autopeptideml %>%
     left_join(characteristics, by = "peptide_id", relationship = "one-to-one") %>%
     left_join(peptipedia, by = "peptide_id") %>%
     left_join(deepsig, by = "peptide_id")
