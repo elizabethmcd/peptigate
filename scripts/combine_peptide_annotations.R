@@ -24,32 +24,31 @@ option_list <- list(
   make_option(c("--characteristics_path"), type="character",
               default="outputs/annotation/characteristics/peptide_characteristics.tsv", 
               help="Path to peptide characteristics TSV file."),
-  make_option(c("--output_path"), type="character",
+  make_option(c("--output_predictions_path"), type="character",
+              default="outputs/annotation/peptide_predictions.tsv", 
+              help="Path to peptide predictions TSV file."),
+  make_option(c("--output_annotations_path"), type="character",
               default="outputs/annotation/peptide_annotations.tsv", 
-              help="Path to peptide characteristics TSV file.")
+              help="Path to peptide annotations TSV file.")
 )
 
 args <- parse_args(OptionParser(option_list=option_list))
 
-#' Process Peptide Predictions and Annotations
+#' Combine Peptide Predictions
 #'
-#' This function processes peptide predictions and annotations by reading data from
+#' This function processes peptide predictions by reading data from
 #' various TSV files, performs renaming and selection operations on columns, and
-#' merges multiple data frames into a single data frame with comprehensive information
-#' about peptide predictions and annotations.
+#' binds multiple data frames into a single data frame with all peptide 
+#' predictions.
 #'
 #' @param nlpprecursor_path Path to the NLPprecursor predictions TSV file.
 #' @param deeppeptide_path Path to the DeepPeptide predictions TSV file.
 #' @param plmutils_path Path to the plmutils predictions CSV file.
-#' @param autopeptideml_dir Path to the directory containing AutoPeptideML TSV files.
-#' @param deepsig_path Path to the DeepSig annotations TSV file.
-#' @param peptipedia_path Path to the Peptipedia BLAST matches TSV file.
-#' @param characteristics_path Path to the peptide characteristics TSV file.
 #'
 #' @return A data frame with peptide predictions merged with various annotations.
-combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, plmutils_path, 
-                                        autopeptideml_dir, deepsig_path,
-                                        peptipedia_path, characteristics_path) {
+combine_peptide_predictions <- function(nlpprecursor_path, 
+                                        deeppeptide_path, 
+                                        plmutils_path) {
   
   nlpprecursor <- read_tsv(nlpprecursor_path) %>%
     select(-nlpprecursor_cleavage_sequence)
@@ -64,7 +63,21 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, plm
   
   peptide_predictions <- bind_rows(nlpprecursor, deeppeptide) %>%
     bind_rows(plmutils)
-  
+}
+
+#' Combine Peptide Annotations
+#'
+#' This function processes peptide annotations by reading data from
+#' various TSV files, performs renaming and selection operations on columns, and
+#' joining multiple data frames into a single data frame with all peptide 
+#' annotations.
+#' 
+#' @param autopeptideml_dir Path to the directory containing AutoPeptideML TSV files.
+#' @param deepsig_path Path to the DeepSig annotations TSV file.
+#' @param peptipedia_path Path to the Peptipedia BLAST matches TSV file.
+#' @param characteristics_path Path to the peptide characteristics TSV file.
+combine_peptide_annotations <- function(autopeptideml_dir, deepsig_path,
+                                        peptipedia_path, characteristics_path){
   autopeptideml_files <- Sys.glob(paste0(autopeptideml_dir, "/*tsv"))
   autopeptideml <- map_dfr(autopeptideml_files, read_tsv) %>%
     group_by(peptide_id, sequence) %>% 
@@ -89,19 +102,19 @@ combine_peptide_annotations <- function(nlpprecursor_path, deeppeptide_path, plm
   peptide_predictions_with_annotations <- peptide_predictions %>%
     left_join(autopeptideml, by = "peptide_id", relationship = "one-to-one") %>%
     left_join(characteristics, by = "peptide_id", relationship = "one-to-one") %>%
-    left_join(peptipedia, by = "peptide_id", relationship = "one-to-one") %>%
-    # some peptides will have two deepsig annotation (signal peptide & chain; allow 1:many)
-    left_join(deepsig, by = "peptide_id", relationship = "one-to-many")
+    left_join(peptipedia, by = "peptide_id") %>%
+    left_join(deepsig, by = "peptide_id")
   
   return(peptide_predictions_with_annotations)
 }
-
-annotations_df<- combine_peptide_annotations(nlpprecursor_path = args$nlpprecursor_path,
+predictions_df<- combine_peptide_predictions(nlpprecursor_path = args$nlpprecursor_path,
                                              deeppeptide_path = args$deeppeptide_path,
-                                             plmutils_path = args$plmutils_path,
-                                             autopeptideml_dir = args$autopeptideml_dir,
+                                             plmutils_path = args$plmutils_path)
+write_tsv(annotations_df, args$output_predictions_path)
+
+
+annotations_df<- combine_peptide_annotations(autopeptideml_dir = args$autopeptideml_dir,
                                              deepsig_path = args$deepsig_path,
                                              peptipedia_path = args$peptipedia_path,
                                              characteristics_path = args$characteristics_path)
-
-write_tsv(annotations_df, args$output_path)
+write_tsv(annotations_df, args$output_anotations_path)
