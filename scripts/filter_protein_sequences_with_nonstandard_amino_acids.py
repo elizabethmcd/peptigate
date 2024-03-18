@@ -58,6 +58,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # This set represents the 20 standard amino acids.
     allowed_amino_acids = {
         "M",
         "A",
