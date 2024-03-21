@@ -104,6 +104,7 @@ rule filter_contigs_to_no_predicted_ORF:
         seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
         """
 
+
 rule download_uniref50_database:
     output:
         db=INPUT_DIR / "databases" / "uniref50.fasta.gz",
@@ -111,6 +112,7 @@ rule download_uniref50_database:
         """
         curl -JLo {output} https://ftp.uniprot.org/pub/databases/uniprot/uniref/uniref50/uniref50.fasta.gz
         """
+
 
 rule make_diamond_db_from_uniref50_database:
     input:
@@ -125,6 +127,7 @@ rule make_diamond_db_from_uniref50_database:
         """
         diamond makedb --in {input.db} -d {params.dbprefix}
         """
+
 
 rule diamond_blastx_transcripts_against_uniref50_database:
     """
@@ -156,12 +159,13 @@ rule diamond_blastx_transcripts_against_uniref50_database:
             --outfmt 6 qseqid sseqid full_sseq pident length qlen slen qcovhsp scovhsp mismatch gapopen qstart qend sstart send evalue bitscore
         """
 
+
 rule filter_transcript_uniref50_hits:
     """
     Filter the uniref50 hits to those with a low evalue against long proteins (>100 amino acids).
     """
     input:
-        tsv=rules.diamond_blastx_transcripts_against_uniref50_database.output.tsv
+        tsv=rules.diamond_blastx_transcripts_against_uniref50_database.output.tsv,
     output:
         tsv=OUTPUT_DIR / "sORF" / "filtering" / "2_filtered_blastx" / "matches.tsv",
         txt=OUTPUT_DIR / "sORF" / "filtering" / "2_filtered_blastx" / "match_names.txt",
@@ -173,6 +177,7 @@ rule filter_transcript_uniref50_hits:
             --output-blast {output.tsv} --output-names {output.txt}
         """
 
+
 rule filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits:
     """
     This rule filters the contigs that had no predicted ORF (defined by input files) to those that
@@ -183,13 +188,17 @@ rule filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits:
         fa=rules.filter_contigs_to_no_predicted_ORF.output.fa,
         names=rules.filter_transcript_uniref50_hits.output.txt,
     output:
-        fa=OUTPUT_DIR / "sORF" / "filtering" / "contigs_with_no_predicted_orf_and_no_uniref50_blast_hit.fa",
+        fa=OUTPUT_DIR
+        / "sORF"
+        / "filtering"
+        / "contigs_with_no_predicted_orf_and_no_uniref50_blast_hit.fa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
         seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
         """
+
 
 rule plmutils_translate:
     """
