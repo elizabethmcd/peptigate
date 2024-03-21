@@ -216,6 +216,23 @@ rule download_nlpprecursor_models:
         """
 
 
+rule filter_protein_sequences_with_nonstandard_amino_acids:
+    """
+    The NLPPrecursor tool only uses the 20 standard amino acids.
+    This script removes sequences with nonstandard amino acids in the sequence.
+    """
+    input:
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+    output:
+        faa=OUTPUT_DIR / "cleavage" / "preprocessing" / "noasterisk_nononstandardaa.faa",
+    conda:
+        "envs/nlpprecursor.yml"
+    shell:
+        """
+        python scripts/filter_protein_sequences_with_nonstandard_amino_acids.py --input {input} --output {output}
+        """
+
+
 rule nlpprecursor:
     """
     The nlpprecursor tool is part of [DeepRiPP](https://doi.org/10.1073/pnas.1901493116)
@@ -233,7 +250,7 @@ rule nlpprecursor:
     to RiPP family), or a non-precursor peptide. A total of 14 classes are identified (n_class)."
     """
     input:
-        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        faa=rules.filter_protein_sequences_with_nonstandard_amino_acids.output.faa,
         model=rules.download_nlpprecursor_models.output.model,
     output:
         tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
@@ -498,7 +515,8 @@ rule combine_peptide_annotations:
         peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         characteristics=rules.characterize_peptides.output.tsv,
     output:
-        tsv=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
+        tsv1=OUTPUT_DIR / "annotation" / "peptide_predictions.tsv",
+        tsv2=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
     params:
         autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
     conda:
@@ -513,7 +531,8 @@ rule combine_peptide_annotations:
             --deepsig_path {input.deepsig} \
             --peptipedia_path {input.peptipedia} \
             --characteristics_path {input.characteristics} \
-            --output_path {output.tsv}
+            --output_predictions_path {output.tsv1} \
+            --output_annotations_path {output.tsv2}
         """
 
 
@@ -525,7 +544,7 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.combine_peptide_annotations.output.tsv,
+        rules.combine_peptide_annotations.output.tsv1,
 
 
 rule predict_sORF:

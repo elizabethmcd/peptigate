@@ -35,7 +35,6 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
     """
     for attempt in range(max_attempts):
         try:
-            # Try to make the prediction
             return predict_function(*args)
         except RuntimeError as e:
             print(f"Attempt {attempt + 1} failed with error: {e}")
@@ -51,6 +50,10 @@ def predict_ripp_sequences(models_dir, input_fasta):
     """
     Uses NLPPrecursor to predict the class and cleavage sites of sequences from an input FASTA file.
     It filters out sequences classified as "NONRIPP" since these are the negative class.
+    NLPPrecursor predict functions do not return predictions in the same order as supplied or as
+    each other. This function accounts for that.
+    Further, since NONRIPP is the negative class, if only performs cleavage prediction on peptides
+    that are not predicted to be part of the negative class.
 
     Parameters:
     - models_dir (str): The directory path where the model files are stored. Available for download
@@ -82,18 +85,39 @@ def predict_ripp_sequences(models_dir, input_fasta):
         )
     except Exception as final_error:
         print(f"Failed to predict class after several attempts: {final_error}")
-        class_predictions = []
+        return []
 
-    cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, sequences)
+    class_predictions_dict = {
+        pred["name"]: pred["class_predictions"][0] for pred in class_predictions
+    }
 
-    # Filter out NONRIPP class predictions and pair sequences with their predictions.`
-    # NONRIPP is the negative class.
+    # Filter out NONRIPP sequences based on class predictions before cleavage prediction
+    # NONRIPP is the negative class, so these are not RIPP peptides.
+    nonripp_sequences = [
+        seq for seq in sequences if class_predictions_dict[seq["name"]]["class"] != "NONRIPP"
+    ]
+
+    if not nonripp_sequences:
+        print("All sequences were classified as NONRIPP.")
+        return []
+
+    # Predict cleavage only for non-NONRIPP sequences
+    cleavage_predictions = ADG.predict(annot_model_path, annot_vocab_path, nonripp_sequences)
+    # Convert cleavage_predictions to a dictionary for easier access
+    cleavage_predictions_dict = {
+        pred["name"]: pred["cleavage_prediction"] for pred in cleavage_predictions
+    }
+
     filtered_predictions = []
-    for ind, sequence in enumerate(sequences):
-        class_pred = class_predictions[ind]["class_predictions"][0] if class_predictions else None
-        cleavage_pred = cleavage_predictions[ind]["cleavage_prediction"]
-        if class_pred and class_pred["class"] != "NONRIPP":
+    for sequence in nonripp_sequences:
+        name = sequence["name"]
+        # We already know each sequence here is not NONRIPP, so directly get the predictions
+        class_pred = class_predictions_dict[name]
+        if name in cleavage_predictions_dict:
+            cleavage_pred = cleavage_predictions_dict[name]
             filtered_predictions.append((sequence, class_pred, cleavage_pred))
+        else:
+            print(f"No cleavage prediction for sequence {name}. Skipping.")
 
     return filtered_predictions
 
