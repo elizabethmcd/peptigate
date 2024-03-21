@@ -118,9 +118,9 @@ rule make_diamond_db_from_uniref50_database:
     input:
         db=rules.download_uniref50_database.output.db,
     output:
-        db=OUTPUT_DIR / "sORF" / "filtering" / "0_diamond_db" / "uniref50.dmnd",
+        db=INPUT_DIR / "databases" / "uniref50.dmnd",
     params:
-        dbprefix=OUTPUT_DIR / "sORF" / "filtering" / "0_diamond_db" / "uniref50",
+        dbprefix=INPUT_DIR / "databases" / "uniref50",
     conda:
         "envs/diamond.yml"
     shell:
@@ -146,9 +146,9 @@ rule diamond_blastx_transcripts_against_uniref50_database:
         db=rules.make_diamond_db_from_uniref50_database.output.db,
         peptide=rules.filter_contigs_to_no_predicted_ORF.output.fa,
     output:
-        tsv=OUTPUT_DIR / "sORF" / "filtering" / "1_blastx" / "matches.tsv",
+        tsv=OUTPUT_DIR / "sORF" / "filtering" / "0_blastx" / "matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "sORF" / "filtering" / "0_diamond_db" / "uniref50",
+        dbprefix=INPUT_DIR / "databases" / "uniref50",
     conda:
         "envs/diamond.yml"
     threads: 8
@@ -167,8 +167,8 @@ rule filter_transcript_uniref50_hits:
     input:
         tsv=rules.diamond_blastx_transcripts_against_uniref50_database.output.tsv,
     output:
-        tsv=OUTPUT_DIR / "sORF" / "filtering" / "2_filtered_blastx" / "matches.tsv",
-        txt=OUTPUT_DIR / "sORF" / "filtering" / "2_filtered_blastx" / "match_names.txt",
+        tsv=OUTPUT_DIR / "sORF" / "filtering" / "1_filtered_blastx" / "matches.tsv",
+        txt=OUTPUT_DIR / "sORF" / "filtering" / "1_filtered_blastx" / "match_names.txt",
     conda:
         "envs/pandas.yml"
     shell:
@@ -468,9 +468,9 @@ rule make_diamond_db_from_peptipedia_database:
     input:
         db=rules.download_peptipedia_database.output.db,
     output:
-        db=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia.dmnd",
+        db=INPUT_DIR / "databases" / "peptipedia.dmnd",
     params:
-        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
+        dbprefix=INPUT_DIR / "databases" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
@@ -484,9 +484,9 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "1_blastp" / "matches.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "blastp_matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
+        dbprefix=OUTPUT_DIR / "databases" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
