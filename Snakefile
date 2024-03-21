@@ -486,7 +486,7 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
     output:
         tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "blastp_matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "databases" / "peptipedia",
+        dbprefix=INPUT_DIR / "databases" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
