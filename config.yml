@@ -12,7 +12,7 @@
 
 # Specify the input and output directories
 input_dir: "inputs/"
-output_dir: "outputs/"
+output_dir: "outputs/demo"
 
 # All input files are produced by reads2transcriptome.
 # While this is not a strict requirement, using these output files gives us the ability to look at very short contiguous sequences.

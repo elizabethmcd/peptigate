@@ -76,18 +76,122 @@ rule get_coding_contig_names:
 
 rule filter_contigs_to_no_predicted_ORF:
     """
-    The r2t pipeline runs transdecoder to predict open reading frames (ORFs) from transcripts.
-    By default, only ORFs that are longer than 100 amino acids are kept by transdecoder.
-    The peptigate pipeline predicts peptides that are 100 amino acids or shorter.
-    This rule eliminates transcripts that contained a transdecoder-predicted ORF.
+    The peptigate pipeline takes as input transcripts (provided in two files) and predicted or
+    annotated coding genes (provided in nucleotide and amino acid formats).
+    This rule removes contigs with coding genes from the full transcript file.
+    It assumes that the contig names are the same between to the two files (everything before the
+    first period) and uses an inverted grep on the sequence names in the coding file to
+    eliminate transcripts that contain protein-coding genes.
     It keeps all other transcripts, regardless of length, to investigate the presence of an sORF
     later in the pipeline.
+
+    We expect that read2transcriptome will often be used to used to create input files for
+    peptigate, or that transdecoder will be used to predict which transcripts contain protein-coding
+    genes (the r2t pipeline also uses transdecoder to predict open reading frames (ORFs) from
+    transcripts). By default, only ORFs that are longer than 100 amino acids are kept by
+    transdecoder. The peptigate pipeline predicts peptides that are 100 amino acids or shorter.
+    This rule eliminates transcripts that contained a transdecoder-predicted ORF.
     """
     input:
         fa=rules.combine_contigs.output.all_contigs,
         names=rules.get_coding_contig_names.output.names,
     output:
-        fa=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_transdecoder_predicted_orf.fa",
+        fa=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_annotated_orf.fa",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
+        """
+
+
+rule download_uniref50_database:
+    output:
+        db=INPUT_DIR / "databases" / "uniref50.fasta.gz",
+    shell:
+        """
+        curl -JLo {output} https://ftp.uniprot.org/pub/databases/uniprot/uniref/uniref50/uniref50.fasta.gz
+        """
+
+
+rule make_diamond_db_from_uniref50_database:
+    input:
+        db=rules.download_uniref50_database.output.db,
+    output:
+        db=INPUT_DIR / "databases" / "uniref50.dmnd",
+    params:
+        dbprefix=INPUT_DIR / "databases" / "uniref50",
+    conda:
+        "envs/diamond.yml"
+    shell:
+        """
+        diamond makedb --in {input.db} -d {params.dbprefix}
+        """
+
+
+rule diamond_blastx_transcripts_against_uniref50_database:
+    """
+    This rule BLASTp's all contigs that did not have a predicted gene against uniref50 to check if
+    the transcript looks like other coding sequences that are long (i.e., do not code for sORFs).
+    We add this step after we observed that very fragmented transcriptome assemblies had over-
+    prediction of sORF.
+    When we BLASTp'd the sORFs against different databases, very few predicted sequences had hits.
+    However, when we BLASTx'd the transcripts that gave rise to those sORFs, almost half had hits to
+    non-sORF proteins (length > 100 amino acids).
+    This supports the hypothesis that fragmented transcripts may be translated by `plmutils` in the wrong open
+    reading frame which leads to over-prediction of sORFs.
+    See https://github.com/Arcadia-Science/peptigate/issues/24 for more details.
+    """
+    input:
+        db=rules.make_diamond_db_from_uniref50_database.output.db,
+        peptide=rules.filter_contigs_to_no_predicted_ORF.output.fa,
+    output:
+        tsv=OUTPUT_DIR / "sORF" / "filtering" / "0_blastx" / "matches.tsv",
+    params:
+        dbprefix=INPUT_DIR / "databases" / "uniref50",
+    conda:
+        "envs/diamond.yml"
+    threads: 8
+    shell:
+        """
+        diamond blastx -p {threads} -d {params.dbprefix} -q {input.peptide} -o {output.tsv} \
+            --header simple \
+            --outfmt 6 qseqid sseqid full_sseq pident length qlen slen qcovhsp scovhsp mismatch gapopen qstart qend sstart send evalue bitscore
+        """
+
+
+rule filter_transcript_uniref50_hits:
+    """
+    Filter the uniref50 hits to those with a low evalue against long proteins (>100 amino acids).
+    """
+    input:
+        tsv=rules.diamond_blastx_transcripts_against_uniref50_database.output.tsv,
+    output:
+        tsv=OUTPUT_DIR / "sORF" / "filtering" / "1_filtered_blastx" / "matches.tsv",
+        txt=OUTPUT_DIR / "sORF" / "filtering" / "1_filtered_blastx" / "match_names.txt",
+    conda:
+        "envs/pandas.yml"
+    shell:
+        """
+        python scripts/filter_transcript_uniref50_hits.py --input {input.tsv} \
+            --output-blast {output.tsv} --output-names {output.txt}
+        """
+
+
+rule filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits:
+    """
+    This rule filters the contigs that had no predicted ORF (defined by input files) to those that
+    have not hits to long proteins in uniref50 (>100 amino acids).
+    These transcripts will then be scanned for sORFs by plmutils.
+    """
+    input:
+        fa=rules.filter_contigs_to_no_predicted_ORF.output.fa,
+        names=rules.filter_transcript_uniref50_hits.output.txt,
+    output:
+        fa=OUTPUT_DIR
+        / "sORF"
+        / "filtering"
+        / "contigs_with_no_predicted_orf_and_no_uniref50_blast_hit.fa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -102,7 +206,7 @@ rule plmutils_translate:
     translates it into amino acid sequences.
     """
     input:
-        rules.filter_contigs_to_no_predicted_ORF.output.fa,
+        rules.filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits.output.fa,
     output:
         faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs.faa",
     conda:
@@ -364,9 +468,9 @@ rule make_diamond_db_from_peptipedia_database:
     input:
         db=rules.download_peptipedia_database.output.db,
     output:
-        db=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia.dmnd",
+        db=INPUT_DIR / "databases" / "peptipedia.dmnd",
     params:
-        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
+        dbprefix=INPUT_DIR / "databases" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
@@ -380,9 +484,9 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
         peptide=rules.combine_peptide_predictions.output.peptide,
     output:
-        tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "1_blastp" / "matches.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "blastp_matches.tsv",
     params:
-        dbprefix=OUTPUT_DIR / "annotation" / "peptipedia" / "0_diamond_db" / "peptipedia",
+        dbprefix=INPUT_DIR / "databases" / "peptipedia",
     conda:
         "envs/diamond.yml"
     shell:
