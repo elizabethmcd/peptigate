@@ -86,7 +86,7 @@ rule filter_contigs_to_no_predicted_ORF:
     later in the pipeline.
 
     We expect that read2transcriptome will often be used to used to create input files for
-    peptigate, or that transdecoder will used to predict which transcripts contain protein-coding
+    peptigate, or that transdecoder will be used to predict which transcripts contain protein-coding
     genes (the r2t pipeline also uses transdecoder to predict open reading frames (ORFs) from
     transcripts). By default, only ORFs that are longer than 100 amino acids are kept by
     transdecoder. The peptigate pipeline predicts peptides that are 100 amino acids or shorter.
@@ -131,14 +131,14 @@ rule make_diamond_db_from_uniref50_database:
 
 rule diamond_blastx_transcripts_against_uniref50_database:
     """
-    This rule BLASTps all contigs that did not have a predicted gene against uniref50 to check if
-    the transcript looks like other coding sequences.
+    This rule BLASTp's all contigs that did not have a predicted gene against uniref50 to check if
+    the transcript looks like other coding sequences that are long (i.e., do not code for sORFs).
     We add this step after we observed that very fragmented transcriptome assemblies had over-
     prediction of sORF.
     When we BLASTp'd the sORFs against different databases, very few predicted sequences had hits.
     However, when we BLASTx'd the transcripts that gave rise to those sORFs, almost half had hits to
-    longer proteins (length > 100 amino acids).
-    This supports the hypothesis that fragmented transcripts may be translated in the wrong open
+    non-sORF proteins (length > 100 amino acids).
+    This supports the hypothesis that fragmented transcripts may be translated by `plmutils` in the wrong open
     reading frame which leads to over-prediction of sORFs.
     See https://github.com/Arcadia-Science/peptigate/issues/24 for more details.
     """

@@ -10,7 +10,7 @@ def filter_blast_results(input_file, output_blast, output_names):
 
     This function filters out BLAST hits with an e-value less than 1e-10, a subject (hit)
     sequence length (slen) of less than 100 amino acids, and an alignment length of greater than 100
-    amino acids. These thresholds are chosen to select transcripts likely hitting long protein
+    amino acids. These thresholds are chosen to filter out transcripts likely hitting long protein
     coding sequences in databases like UniRef50, thus suggesting that these transcripts are less
     likely to encode short open reading frame (sORF) peptides because they are likely fragments of
     true long protein-coding genes.
