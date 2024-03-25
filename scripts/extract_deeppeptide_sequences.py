@@ -22,8 +22,14 @@ def verify_translation(nucleotide_seq, amino_acid_seq):
 
 
 def extract_peptide_sequences(
-    data, protein_fasta_file, nucleotide_fasta_file, proteins_output_file, nucleotides_output_file,
-    protein_peptides_output_file, nucleotide_peptides_output_file, predictions_output_file
+    data,
+    protein_fasta_file,
+    nucleotide_fasta_file,
+    proteins_output_file,
+    nucleotides_output_file,
+    protein_peptides_output_file,
+    nucleotide_peptides_output_file,
+    predictions_output_file,
 ):
     """
     Extract gene and peptide sequences based on the data dictionary and FASTA file,
@@ -90,9 +96,8 @@ def extract_peptide_sequences(
     for protein_key, protein_info in data["PREDICTIONS"].items():
         protein_id = protein_key.split()[0][1:]
 
-
         peptides = protein_info.get("peptides")
-        if peptides: 
+        if peptides:
             protein_sequence = protein_sequences.get(protein_id)
             nucleotide_sequence = nucleotide_sequences.get(protein_id)
             if protein_sequence:
@@ -159,15 +164,15 @@ def extract_peptide_sequences(
 
 
 def main(
-        json_file,
-        protein_fasta_file,
-        nucleotide_fasta_file,
-        proteins_output_file,
-        nucleotides_output_file,
-        protein_peptides_output_file,
-        nucleotide_peptides_output_file,
-        predictions_output_file,
-    ):
+    json_file,
+    protein_fasta_file,
+    nucleotide_fasta_file,
+    proteins_output_file,
+    nucleotides_output_file,
+    protein_peptides_output_file,
+    nucleotide_peptides_output_file,
+    predictions_output_file,
+):
     with open(json_file) as f:
         data = json.load(f)
 
@@ -179,7 +184,7 @@ def main(
         nucleotides_output_file,
         protein_peptides_output_file,
         nucleotide_peptides_output_file,
-        predictions_output_file
+        predictions_output_file,
     )
 
 
@@ -200,12 +205,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "protein_peptides_output_file",
         type=str,
-        help="The output file path for peptides in amino acid format."
+        help="The output file path for peptides in amino acid format.",
     )
     parser.add_argument(
         "nucleotide_peptides_output_file",
         type=str,
-        help="The output file path for peptides in nucleotide format."
+        help="The output file path for peptides in nucleotide format.",
     )
     parser.add_argument(
         "predictions_output_file", type=str, help="The output file path for predictions."

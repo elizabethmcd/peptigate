@@ -147,7 +147,7 @@ def extract_ripp_sequences(
     nucleotides_output_file,
     protein_peptides_output_file,
     nucleotide_peptides_output_file,
-    predictions_output_file
+    predictions_output_file,
 ):
     """
     Extracts and writes the sequences and their prediction information to specified TSV and FASTA
@@ -206,15 +206,15 @@ def extract_ripp_sequences(
         protein_sequence = protein_sequences.get(protein_id)
         nucleotide_sequence = nucleotide_sequences.get(protein_id)
         if protein_sequence:
-            protein_records.append(
-                SeqRecord(Seq(protein_sequence), id=protein_id, description="")
-            )
+            protein_records.append(SeqRecord(Seq(protein_sequence), id=protein_id, description=""))
             nucleotide_records.append(
                 SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
             )
 
         protein_peptide_sequence = Seq(cleavage_pred["sequence"])
-        nucleotide_peptide_sequence = nucleotide_sequence[cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3]
+        nucleotide_peptide_sequence = nucleotide_sequence[
+            cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3
+        ]
         if verify_translation(nucleotide_peptide_sequence, protein_peptide_sequence):
             description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
             description = " ".join(description_fields)
@@ -224,14 +224,14 @@ def extract_ripp_sequences(
                     id=peptide_id,
                     description=description,
                 )
-             )
+            )
             nucleotide_peptide_records.append(
                 SeqRecord(
                     Seq(nucleotide_peptide_sequence),
-                        id=peptide_id,
-                        description=description,
-                    )
+                    id=peptide_id,
+                    description=description,
                 )
+            )
 
             predictions.append(
                 [
@@ -289,7 +289,7 @@ def main(
         nucleotides_output_file,
         protein_peptides_output_file,
         nucleotide_peptides_output_file,
-        predictions_output_file
+        predictions_output_file,
     )
 
 
@@ -309,12 +309,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "protein_peptides_output_file",
         type=str,
-        help="The output file path for peptides in amino acid format."
+        help="The output file path for peptides in amino acid format.",
     )
     parser.add_argument(
         "nucleotide_peptides_output_file",
         type=str,
-        help="The output file path for peptides in nucleotide format."
+        help="The output file path for peptides in nucleotide format.",
     )
     parser.add_argument(
         "predictions_output_file", type=str, help="The output file path for predictions."
