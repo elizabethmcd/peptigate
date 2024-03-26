@@ -11,9 +11,9 @@ validates that the extracted nucleotide sequence translates to the provided amin
 
 import argparse
 
+import utils
 from Bio import SeqIO
 
-from utils import *
 
 def extract_positions_and_frame(protein_header):
     """Extract start, end positions, and reading frame from the protein sequence header."""
@@ -37,9 +37,7 @@ def process_by_positions_and_frame(seq, start, end, frame):
 
 
 def extract_nucleotide_peptide_sequences(
-    nucleotide_fasta_file,
-    protein_peptides_fasta_file,
-    nucleotide_peptides_output_file
+    nucleotide_fasta_file, protein_peptides_fasta_file, nucleotide_peptides_output_file
 ):
     """
     Extract and validate nucleotide sequences for plmutils-predicted peptides based on the FASTA
@@ -57,10 +55,8 @@ def extract_nucleotide_peptide_sequences(
         protein_peptide_sequence = peptide_record.seq
         # this is dumb but to be able to refactor the verify_translation() function, the input
         # sequences need to be formatted as str(), not as Seq().
-        if not verify_translation(
-            str(nucleotide_peptide_sequence),
-            str(protein_peptide_sequence),
-            to_stop=False
+        if not utils.verify_translation(
+            str(nucleotide_peptide_sequence), str(protein_peptide_sequence), to_stop=False
         ):
             print(
                 f"Warning: Translation mismatch for {transcript_id}. "

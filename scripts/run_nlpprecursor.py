@@ -5,13 +5,12 @@ import time
 from pathlib import Path
 
 import nlpprecursor
+import utils
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from nlpprecursor.annotation.data import DatasetGenerator as ADG
 from nlpprecursor.classification.data import DatasetGenerator as CDG
-
-from utils import *
 
 # This allows for backwards compatibility of the pickled models.
 sys.modules["protai"] = nlpprecursor
@@ -164,8 +163,8 @@ def extract_ripp_sequences(
       that NLPPrecursor was the source of the annotation.
     - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
     """
-    protein_sequences = read_fasta(protein_fasta_file)
-    nucleotide_sequences = read_fasta(nucleotide_fasta_file)
+    protein_sequences = utils.read_fasta(protein_fasta_file)
+    nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file)
 
     protein_records = []
     nucleotide_records = []
@@ -203,7 +202,9 @@ def extract_ripp_sequences(
         nucleotide_peptide_sequence = nucleotide_sequence[
             cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3
         ]
-        if verify_translation(nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True):
+        if utils.verify_translation(
+            nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
+        ):
             description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
             description = " ".join(description_fields)
             protein_peptide_records.append(

@@ -2,11 +2,11 @@ import argparse
 import csv
 import json
 
+import utils
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from utils import *
 
 def extract_peptide_sequences(
     data,
@@ -71,8 +71,8 @@ def extract_peptide_sequences(
         nucleotide_peptides_output_file='path/to/peptides_output.fna',
         predictions_output_file='path/to/output.tsv')
     """
-    protein_sequences = read_fasta(protein_fasta_file)
-    nucleotide_sequences = read_fasta(nucleotide_fasta_file)
+    protein_sequences = utils.read_fasta(protein_fasta_file)
+    nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file)
 
     protein_records = []
     nucleotide_records = []
@@ -106,7 +106,7 @@ def extract_peptide_sequences(
                     }
                     protein_peptide_sequence = protein_sequence[start - 1 : end]
                     nucleotide_peptide_sequence = nucleotide_sequence[(start - 1) * 3 : end * 3]
-                    if verify_translation(
+                    if utils.verify_translation(
                         nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=False
                     ):
                         peptide_id = f"{protein_id}_start{start}_end{end}"
