@@ -13,6 +13,7 @@ import argparse
 
 from Bio import SeqIO
 
+from utils import *
 
 def extract_positions_and_frame(protein_header):
     """Extract start, end positions, and reading frame from the protein sequence header."""
@@ -27,67 +28,79 @@ def extract_positions_and_frame(protein_header):
     return start, end, frame
 
 
-def process_sequence(seq, start, end, frame):
-    """Adjust positions for start/stop codons and handle reverse complementation based on frame."""
-    # start_adj, end_adj = start - 1 - 3, end + 3  # Adjust for start and stop codons
+def process_by_positions_and_frame(seq, start, end, frame):
+    """Extract the Handle reverse complementation based on frame."""
     if frame < 0:
         return seq[start:end].reverse_complement()
     else:
         return seq[start:end]
 
 
-def validate_translation(nucleotide_seq, amino_acid_seq):
-    """Validate that the nucleotide sequence translates to the expected amino acid sequence."""
-    translated_seq = nucleotide_seq.translate()
-    return translated_seq == amino_acid_seq
+def extract_nucleotide_peptide_sequences(
+    nucleotide_fasta_file,
+    protein_peptides_fasta_file,
+    nucleotide_peptides_output_file
+):
+    """
+    Extract and validate nucleotide sequences for plmutils-predicted peptides based on the FASTA
+    headers of the peptide protein sequences.
+    """
+    nucleotide_sequences = SeqIO.to_dict(SeqIO.parse(nucleotide_fasta_file, "fasta"))
+    nucleotide_peptide_records = []
 
+    for peptide_record in SeqIO.parse(protein_peptides_fasta_file, "fasta"):
+        transcript_id = peptide_record.id
+        start, end, frame = extract_positions_and_frame(peptide_record.description)
+        nucleotide_peptide_sequence = process_by_positions_and_frame(
+            nucleotide_sequences[transcript_id].seq, start, end, frame
+        )
+        protein_peptide_sequence = peptide_record.seq
+        # this is dumb but to be able to refactor the verify_translation() function, the input
+        # sequences need to be formatted as str(), not as Seq().
+        if not verify_translation(
+            str(nucleotide_peptide_sequence),
+            str(protein_peptide_sequence),
+            to_stop=False
+        ):
+            print(
+                f"Warning: Translation mismatch for {transcript_id}. "
+                "Check the reading frame and positions."
+            )
+            continue
+        output_record = peptide_record
+        output_record.seq = nucleotide_peptide_sequence
+        nucleotide_peptide_records.append(output_record)
 
-def extract_nucleotide_sequences(nucleotide_fasta, protein_fasta, output_fasta):
-    """Extract and validate nucleotide sequences based on protein FASTA headers."""
-    nucleotide_seqs = SeqIO.to_dict(SeqIO.parse(nucleotide_fasta, "fasta"))
-
-    with open(output_fasta, "w") as output_handle:
-        for protein_record in SeqIO.parse(protein_fasta, "fasta"):
-            transcript_id = protein_record.id
-            amino_acid_seq = protein_record.seq
-            start, end, frame = extract_positions_and_frame(protein_record.description)
-            nucleotide_seq = process_sequence(nucleotide_seqs[transcript_id].seq, start, end, frame)
-            if not validate_translation(nucleotide_seq, amino_acid_seq):
-                print(
-                    f"Warning: Translation mismatch for {transcript_id}. "
-                    "Check the reading frame and positions."
-                )
-                continue
-            output_record = protein_record
-            output_record.seq = nucleotide_seq
-            SeqIO.write(output_record, output_handle, "fasta")
+    SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_output_file, "fasta")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extract specific nucleotide sequences based on " "protein sequence headers."
+        description="Extract specific nucleotide sequences based on protein sequence headers."
     )
 
     parser.add_argument(
-        "-n", "--nucleotide_fasta", required=True, help="Path to the nucleotide FASTA file."
+        "-n", "--nucleotide_fasta_file", required=True, help="Path to the nucleotide FASTA file."
     )
     parser.add_argument(
         "-p",
-        "--protein_fasta",
+        "--protein_peptides_fasta_file",
         required=True,
-        help="Path to the predicted protein sequences FASTA file.",
+        help="Path to the predicted peptide protein sequences FASTA file.",
     )
     parser.add_argument(
         "-o",
-        "--output_fasta",
+        "--nucleotide_peptides_output_file",
         required=True,
         help="Output path for the extracted nucleotide sequences.",
     )
 
     args = parser.parse_args()
-    extract_nucleotide_sequences(args.nucleotide_fasta, args.protein_fasta, args.output_fasta)
-    args = parser.parse_args()
-    extract_nucleotide_sequences(args.nucleotide_fasta, args.protein_fasta, args.output_fasta)
+    extract_nucleotide_peptide_sequences(
+        args.nucleotide_fasta_file,
+        args.protein_peptides_fasta_file,
+        args.nucleotide_peptides_output_file,
+    )
 
 
 if __name__ == "__main__":

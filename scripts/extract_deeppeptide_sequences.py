@@ -6,20 +6,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-
-def read_fasta(fasta_file):
-    """Read a FASTA file using BioPython and return a dictionary of sequences."""
-    sequences = {}
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        sequences[record.id] = str(record.seq)
-    return sequences
-
-
-def verify_translation(nucleotide_seq, amino_acid_seq):
-    """Verify that the nucleotide sequence translates to the amino acid sequence"""
-    translated_seq = Seq(nucleotide_seq).translate()
-    return str(translated_seq) == amino_acid_seq
-
+from utils import *
 
 def extract_peptide_sequences(
     data,
@@ -119,7 +106,9 @@ def extract_peptide_sequences(
                     }
                     protein_peptide_sequence = protein_sequence[start - 1 : end]
                     nucleotide_peptide_sequence = nucleotide_sequence[(start - 1) * 3 : end * 3]
-                    if verify_translation(nucleotide_peptide_sequence, protein_peptide_sequence):
+                    if verify_translation(
+                        nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=False
+                    ):
                         peptide_id = f"{protein_id}_start{start}_end{end}"
                         description_fields = [
                             f"{key}:{value}" for key, value in peptide_metadata.items()
@@ -143,17 +132,10 @@ def extract_peptide_sequences(
                             [peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"]
                         )
 
-    with open(proteins_output_file, "w") as proteins_out:
-        SeqIO.write(protein_records, proteins_out, "fasta")
-
-    with open(nucleotides_output_file, "w") as nucleotides_out:
-        SeqIO.write(nucleotide_records, nucleotides_out, "fasta")
-
-    with open(protein_peptides_output_file, "w") as protein_peptides_out:
-        SeqIO.write(protein_peptide_records, protein_peptides_out, "fasta")
-
-    with open(nucleotide_peptides_output_file, "w") as nucleotide_peptides_out:
-        SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_out, "fasta")
+    SeqIO.write(protein_records, proteins_output_file, "fasta")
+    SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")
+    SeqIO.write(protein_peptide_records, protein_peptides_output_file, "fasta")
+    SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_output_file, "fasta")
 
     with open(predictions_output_file, "w", newline="") as predictions_out:
         writer = csv.writer(predictions_out, delimiter="\t")

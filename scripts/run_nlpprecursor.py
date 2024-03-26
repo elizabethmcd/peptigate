@@ -11,6 +11,8 @@ from Bio.SeqRecord import SeqRecord
 from nlpprecursor.annotation.data import DatasetGenerator as ADG
 from nlpprecursor.classification.data import DatasetGenerator as CDG
 
+from utils import *
+
 # This allows for backwards compatibility of the pickled models.
 sys.modules["protai"] = nlpprecursor
 
@@ -44,20 +46,6 @@ def robust_predict(predict_function, *args, max_attempts=2, sleep_time=1):
             else:
                 print("All attempts failed. Raising the last exception.")
                 raise  # Re-raise the last exception if out of attempts
-
-
-def read_fasta(fasta_file):
-    """Read a FASTA file using BioPython and return a dictionary of sequences."""
-    sequences = {}
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        sequences[record.id] = str(record.seq)
-    return sequences
-
-
-def verify_translation(nucleotide_seq, amino_acid_seq):
-    """Verify that a nucleotide sequence translates correctly to its amino acid sequence."""
-    translated_seq = Seq(nucleotide_seq).translate(to_stop=True)
-    return str(translated_seq) == amino_acid_seq
 
 
 def predict_ripp_sequences(models_dir, protein_fasta_file):
@@ -215,7 +203,7 @@ def extract_ripp_sequences(
         nucleotide_peptide_sequence = nucleotide_sequence[
             cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3
         ]
-        if verify_translation(nucleotide_peptide_sequence, protein_peptide_sequence):
+        if verify_translation(nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True):
             description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
             description = " ".join(description_fields)
             protein_peptide_records.append(
