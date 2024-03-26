@@ -300,7 +300,7 @@ rule extract_plmutils_predicted_peptides_as_nucleotides:
         """
         python  scripts/extract_plmutils_nucleotide_sequences.py \
             -n {input.fna} \
-            -p {input.peptide_faa } \
+            -p {input.peptide_faa} \
             -o {output.peptide_ffn}
         """
 
@@ -393,7 +393,7 @@ rule nlpprecursor:
             {output.parent_faa} \
             {output.parent_ffn} \
             {output.peptide_faa} \
-            {output.peptide_ffn} \ 
+            {output.peptide_ffn} \
             {output.tsv}
         """
 
@@ -461,7 +461,7 @@ rule extract_deeppeptide_sequences:
             {output.parent_faa} \
             {output.parent_ffn} \
             {output.peptide_faa} \
-            {output.peptide_ffn} \ 
+            {output.peptide_ffn} \
             {output.tsv}
         """
 
@@ -499,7 +499,7 @@ rule convert_peptide_faa_to_tsv:
 
 rule combine_peptide_ffn_predictions:
     input:
-        sorf=rules.extract_plmutils_predicted_peptides.output.peptide_ffn,
+        sorf=rules.extract_plmutils_predicted_peptides_as_nucleotides.output.peptide_ffn,
         nlpprecursor=rules.nlpprecursor.output.peptide_ffn,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide_ffn,
     output:
@@ -704,7 +704,7 @@ rule combine_peptide_predictions:
         "envs/tidyverse.yml"
     shell:
         """
-        Rscript scripts/combine_peptide_annotations.R \
+        Rscript scripts/combine_peptide_predictions.R \
             --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
             --plmutils_path {input.plmutils} \

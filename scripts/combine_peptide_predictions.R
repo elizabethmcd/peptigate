@@ -6,7 +6,7 @@ option_list <- list(
               default="outputs/demo/cleavage/nlpprecursor/nlpprecursor_predictions.tsv", 
               help="Path to NLPprecursor predictions TSV file."),
   make_option(c("--deeppeptide_path"), type="character",
-              default="outputs/demo/cleavage/deeppeptide/predictions.tsv", 
+              default="outputs/demo/cleavage/deeppeptide/deeppeptide_predictions.tsv", 
               help="Path to DeepPeptide predictions TSV file."),
   make_option(c("--plmutils_path"), type="character",
               default="outputs/demo/sORF/plmutils/predictions.csv", 
@@ -24,7 +24,7 @@ option_list <- list(
 
 args <- parse_args(OptionParser(option_list=option_list))
 
-#' Combine Peptide Prediction
+#' Combine Peptide Predictions
 #'
 #' This function processes peptide predictions by reading data from
 #' various text files, performs renaming and selection operations on columns, and
@@ -61,7 +61,8 @@ combine_peptide_predictions <- function(nlpprecursor_path,
   
   peptide_faa <- read_tsv(faa_tab_path, col_names = c("peptide_id", "protein_sequence"))
   peptide_ffn <- read_tsv(ffn_tab_path, col_names = c("peptide_id", "nucleotide_sequence"))
-  peptide_sequences <- left_join(peptide_faa, peptide_ffn)
+  peptide_sequences <- left_join(peptide_faa, peptide_ffn) %>%
+    select(peptide_id, protein_sequence, nucleotide_sequence)
   
   peptide_predictions <- left_join(peptide_predictions, peptide_sequences, by = "peptide_id")
 }
