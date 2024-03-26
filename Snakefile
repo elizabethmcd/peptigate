@@ -681,24 +681,15 @@ rule run_autopeptideml:
         """
 
 
-#rules.convert_peptide_ffn_to_tsv.output.tsv
-
-rule combine_peptide_annotations:
+rule combine_peptide_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
         plmutils=rules.plmutils_predict.output.csv,
-        autopeptideml=expand(
-            rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
-        ),
-        deepsig=rules.run_deepsig.output.tsv,
-        peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
-        characteristics=rules.characterize_peptides.output.tsv,
+        faa_tab=rules.convert_peptide_faa_to_tsv.output.tsv,
+        ffn_tab=rules.convert_peptide_ffn_to_tsv.output.tsv,
     output:
-        tsv1=OUTPUT_DIR / "predictions" / "peptide_predictions.tsv",
-        tsv2=OUTPUT_DIR / "predictions" / "peptide_annotations.tsv",
-    params:
-        autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
+        tsv=OUTPUT_DIR / "predictions" / "peptide_predictions.tsv",
     conda:
         "envs/tidyverse.yml"
     shell:
@@ -707,12 +698,34 @@ rule combine_peptide_annotations:
             --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
             --plmutils_path {input.plmutils} \
+            --faa_tab_path {input.faa_tab} \
+            --ffn_tab_path {input.ffn_tab} \
+            --output_predictions_path {output.tsv}
+        """
+
+
+rule combine_peptide_annotations:
+    input:
+        autopeptideml=expand(
+            rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
+        ),
+        deepsig=rules.run_deepsig.output.tsv,
+        peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
+        characteristics=rules.characterize_peptides.output.tsv,
+    output:
+        tsv=OUTPUT_DIR / "predictions" / "peptide_annotations.tsv",
+    params:
+        autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
+    conda:
+        "envs/tidyverse.yml"
+    shell:
+        """
+        Rscript scripts/combine_peptide_annotations.R \
             --autopeptideml_dir {params.autopeptidemldir} \
             --deepsig_path {input.deepsig} \
             --peptipedia_path {input.peptipedia} \
             --characteristics_path {input.characteristics} \
-            --output_predictions_path {output.tsv1} \
-            --output_annotations_path {output.tsv2}
+            --output_annotations_path {output.tsv}
         """
 
 
@@ -724,7 +737,8 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.combine_peptide_annotations.output.tsv1,
+        rules.combine_peptide_predictions.output.tsv,
+        rules.combine_peptide_annotations.output.tsv,
 
 
 rule predict_sORF:
