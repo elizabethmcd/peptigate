@@ -287,12 +287,13 @@ rule extract_plmutils_predicted_peptides:
         seqkit grep -f {output.names} {input.peptide_faa} -o {output.peptide_faa}
         """
 
+
 rule extract_plmutils_predicted_peptides_as_nucleotides:
     input:
         fna=rules.filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits.output.fna,
         peptide_faa=rules.extract_plmutils_predicted_peptides.output.peptide_faa,
     output:
-        peptide_ffn=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptides.ffn"
+        peptide_ffn=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptides.ffn",
     conda:
         "envs/biopython.yml"
     shell:
@@ -379,7 +380,6 @@ rule nlpprecursor:
         peptide_faa=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.faa",
         peptide_ffn=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.ffn",
         tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
-     
     params:
         modelsdir=INPUT_DIR / "models" / "nlpprecursor" / "models/",
     conda:
@@ -483,14 +483,19 @@ rule combine_peptide_faa_predictions:
         cat {input} > {output.peptide_faa}
         """
 
+
 rule convert_peptide_faa_to_tsv:
-    input: peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa
-    output: tsv=OUTPUT_DIR / "predictions" / "peptides_faa.tsv"
-    conda: "envs/seqkit.yml"
+    input:
+        peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa,
+    output:
+        tsv=OUTPUT_DIR / "predictions" / "peptides_faa.tsv",
+    conda:
+        "envs/seqkit.yml"
     shell:
         """
         seqkit fx2tab --only-id {input} -o {output}
         """
+
 
 rule combine_peptide_ffn_predictions:
     input:
@@ -504,14 +509,19 @@ rule combine_peptide_ffn_predictions:
         cat {input} > {output.peptide_ffn}
         """
 
+
 rule convert_peptide_ffn_to_tsv:
-    input: peptide_ffn=rules.combine_peptide_ffn_predictions.output.peptide_ffn
-    output: tsv=OUTPUT_DIR / "predictions" / "peptides_ffn.tsv"
-    conda: "envs/seqkit.yml"
+    input:
+        peptide_ffn=rules.combine_peptide_ffn_predictions.output.peptide_ffn,
+    output:
+        tsv=OUTPUT_DIR / "predictions" / "peptides_ffn.tsv",
+    conda:
+        "envs/seqkit.yml"
     shell:
         """
         seqkit fx2tab --only-id {input} -o {output}
         """
+
 
 # TODO: decide whether to output ffn/faa of parent transcripts as a combined file.
 #       I haven't needed it yet in subsequent analyses, so not outputting for now.
@@ -747,7 +757,8 @@ rule predict_sORF:
     snakemake predict_sORF --software-deployment-method conda -j 8 
     """
     input:
-        sorf=rules.extract_plmutils_predicted_peptides_as_nucleotides.output.peptide_ffn
+        sorf=rules.extract_plmutils_predicted_peptides_as_nucleotides.output.peptide_ffn,
+
 
 rule predict_cleavage:
     """
