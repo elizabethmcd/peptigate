@@ -260,7 +260,7 @@ rule plmutils_predict:
         faa=rules.length_filter_plmutils_translate_output.output.faa,
         model=PLMUTILS_MODEL_DIR,
     output:
-        csv=OUTPUT_DIR / "sORF" / "plmutils" / "predictions.csv",
+        csv=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_predictions.csv",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -277,14 +277,30 @@ rule extract_plmutils_predicted_peptides:
         csv=rules.plmutils_predict.output.csv,
         faa=rules.length_filter_plmutils_translate_output.output.faa,
     output:
-        names=OUTPUT_DIR / "sORF" / "plmutils" / "peptide_names.faa",
-        faa=OUTPUT_DIR / "sORF" / "plmutils" / "peptides.faa",
+        names=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptide_names.faa",
+        faa=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptides.faa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
         grep "positive" {input.csv} | cut -d, -f1 > {output.names} 
         seqkit grep -f {output.names} {input.faa} -o {output.faa}
+        """
+
+rule extract_plmutils_predicted_peptides_as_nucleotides:
+    input:
+        fa=rules.filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits.output.fa,
+        faa=rules.extract_plmutils_predicted_peptides.output.faa,
+    output:
+        ffn=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptides.ffn"
+    conda:
+        "envs/biopython.yml"
+    shell:
+        """
+        python  scripts/extract_plmutils_nucleotide_sequences.py \
+            -n {input.fa} \
+            -p {input.faa } \
+            -o {output}
         """
 
 
@@ -355,17 +371,30 @@ rule nlpprecursor:
     """
     input:
         faa=rules.filter_protein_sequences_with_nonstandard_amino_acids.output.faa,
+        fna=ORFS_NUCLEOTIDES,
         model=rules.download_nlpprecursor_models.output.model,
     output:
+        parent_faa=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptide_parents.faa",
+        parent_fna=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptide_parents.fna",
+        peptide_faa=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.faa",
+        peptide_fna=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.fna",
         tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
-        peptide=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.fasta",
+     
     params:
         modelsdir=INPUT_DIR / "models" / "nlpprecursor" / "models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
         """
-        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output.tsv} {output.peptide}
+        python scripts/run_nlpprecursor.py \
+            {params.modelsdir} \
+            {input.faa} \
+            {input.fna} \
+            {output.parent_faa} \
+            {output.parent_fna} \
+            {output.peptide_faa} \
+            {output.peptide_fna} \ 
+            {output.tsv}
         """
 
 
@@ -412,17 +441,28 @@ rule extract_deeppeptide_sequences:
     in FASTA format.
     """
     input:
-        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         json=rules.deeppeptide.output.json,
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        fna=ORFS_NUCLEOTIDES,
     output:
-        propeptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "propeptides.faa",
-        peptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "peptides.faa",
-        tsv=OUTPUT_DIR / "cleavage" / "deeppeptide" / "predictions.tsv",
+        parent_faa=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptide_parents.faa",
+        parent_fna=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptide_parents.fna",
+        peptide_faa=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptides.faa",
+        peptide_fna=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptides.fna",
+        tsv=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_predictions.tsv",
     conda:
         "envs/biopython.yml"
     shell:
         """
-        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide} {output.tsv}
+        python scripts/extract_deeppeptide_sequences.py \
+            {input.json} \
+            {input.faa} \
+            {input.fna} \
+            {output.parent_faa} \
+            {output.parent_fna} \
+            {output.peptide_faa} \
+            {output.peptide_fna} \ 
+            {output.tsv}
         """
 
 
