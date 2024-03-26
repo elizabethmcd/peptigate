@@ -13,7 +13,7 @@ cloned_repositories/
 inputs/databases/
 /inputs/models/
 inputs/reads2transcriptome_outputs/
-tmp_mmseqs2/
+*tmp*
 sandbox/
 
 # Byte-compiled / optimized / DLL files
