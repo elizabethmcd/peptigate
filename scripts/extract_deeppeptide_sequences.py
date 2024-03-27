@@ -131,7 +131,7 @@ def extract_peptide_sequences(
 
         # not with the rest of the for loop because don't want repeated multiple times if multiple
         # peptides per protein/transcript
-        if nucleotide_sequence:
+        if nucleotide_sequence and peptides:
             nucleotide_records.append(
                 SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
             )
