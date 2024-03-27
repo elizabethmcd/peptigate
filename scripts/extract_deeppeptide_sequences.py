@@ -82,55 +82,59 @@ def extract_peptide_sequences(
 
     for protein_key, protein_info in data["PREDICTIONS"].items():
         protein_id = protein_key.split()[0][1:]
-
         peptides = protein_info.get("peptides")
-        if peptides:
-            protein_sequence = protein_sequences.get(protein_id)
-            nucleotide_sequence = nucleotide_sequences.get(protein_id)
-            if protein_sequence:
-                protein_records.append(
-                    SeqRecord(Seq(protein_sequence), id=protein_id, description="")
-                )
-                nucleotide_records.append(
-                    SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
+
+        protein_sequence = protein_sequences.get(protein_id)
+        nucleotide_sequence = nucleotide_sequences.get(protein_id)
+
+        if protein_sequence and peptides:
+            protein_records.append(SeqRecord(Seq(protein_sequence), id=protein_id, description=""))
+
+            for peptide in peptides:
+                start, end, peptide_class = peptide["start"], peptide["end"], peptide["type"]
+                protein_peptide_sequence = protein_sequence[start - 1 : end]
+                peptide_id = f"{protein_id}_start{start}_end{end}"
+                description = " ".join(
+                    [
+                        f"{key}:{value}"
+                        for key, value in {
+                            "start": start,
+                            "end": end,
+                            "type": "cleavage",
+                            "class": peptide_class,
+                            "prediction_tool": "deeppeptide",
+                        }.items()
+                    ]
                 )
 
-                for peptide in peptides:
-                    start, end, peptide_class = peptide["start"], peptide["end"], peptide["type"]
-                    peptide_metadata = {
-                        "start": start,
-                        "end": end,
-                        "type": "cleavage",
-                        "class": peptide_class,
-                        "prediction_tool": "deeppeptide",
-                    }
-                    protein_peptide_sequence = protein_sequence[start - 1 : end]
+                protein_peptide_records.append(
+                    SeqRecord(Seq(protein_peptide_sequence), id=peptide_id, description=description)
+                )
+
+                predictions.append(
+                    [peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"]
+                )
+
+                # Note that if transdecoder or similar is not used to predict CDS (protein and
+                # nucleotide), nucleotide sequences may not have the same ids as protein sequences
+                # and this extraction strategy may fail. When that is the case, we don't output
+                # anything for nucleotide sequences (although proteins have already still been
+                # processed),  and the nucleotide sequence will not be reported for the protein
+                # sequence.
+                if nucleotide_sequence:
                     nucleotide_peptide_sequence = nucleotide_sequence[(start - 1) * 3 : end * 3]
-                    if utils.verify_translation(
-                        nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=False
-                    ):
-                        peptide_id = f"{protein_id}_start{start}_end{end}"
-                        description_fields = [
-                            f"{key}:{value}" for key, value in peptide_metadata.items()
-                        ]
-                        description = " ".join(description_fields)
-                        protein_peptide_records.append(
-                            SeqRecord(
-                                Seq(protein_peptide_sequence),
-                                id=peptide_id,
-                                description=description,
-                            )
+                    nucleotide_peptide_records.append(
+                        SeqRecord(
+                            Seq(nucleotide_peptide_sequence), id=peptide_id, description=description
                         )
-                        nucleotide_peptide_records.append(
-                            SeqRecord(
-                                Seq(nucleotide_peptide_sequence),
-                                id=peptide_id,
-                                description=description,
-                            )
-                        )
-                        predictions.append(
-                            [peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"]
-                        )
+                    )
+
+        # not with the rest of the for loop because don't want repeated multiple times if multiple
+        # peptides per protein/transcript
+        if nucleotide_sequence:
+            nucleotide_records.append(
+                SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
+            )
 
     SeqIO.write(protein_records, proteins_output_file, "fasta")
     SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")

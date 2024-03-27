@@ -190,21 +190,24 @@ def extract_ripp_sequences(
             "prediction_tool": "nlpprecursor",
         }
 
+        predictions.append(
+            [
+                peptide_id,
+                cleavage_pred["start"],
+                cleavage_pred["stop"],
+                "cleavage",
+                class_pred["class"],
+                "nlpprecursor",
+                class_pred["score"],
+                cleavage_pred["sequence"],
+                cleavage_pred["score"],
+            ]
+        )
+
         protein_sequence = protein_sequences.get(protein_id)
-        nucleotide_sequence = nucleotide_sequences.get(protein_id)
         if protein_sequence:
             protein_records.append(SeqRecord(Seq(protein_sequence), id=protein_id, description=""))
-            nucleotide_records.append(
-                SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
-            )
-
-        protein_peptide_sequence = Seq(cleavage_pred["sequence"])
-        nucleotide_peptide_sequence = nucleotide_sequence[
-            cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3
-        ]
-        if utils.verify_translation(
-            nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
-        ):
+            protein_peptide_sequence = cleavage_pred["sequence"]
             description_fields = [f"{key}:{value}" for key, value in peptide_metadata.items()]
             description = " ".join(description_fields)
             protein_peptide_records.append(
@@ -214,27 +217,30 @@ def extract_ripp_sequences(
                     description=description,
                 )
             )
-            nucleotide_peptide_records.append(
-                SeqRecord(
-                    Seq(nucleotide_peptide_sequence),
-                    id=peptide_id,
-                    description=description,
-                )
+
+        nucleotide_sequence = nucleotide_sequences.get(protein_id)
+        # Note that if transdecoder or similar is not used to predict CDS (protein and nucleotide),
+        # nucleotide sequences may not have the same ids as protein sequences and this extraction
+        # strategy may fail. When that is the case, we don't output anything, and the nucleotide
+        # sequence will not be reported for the protein sequence.
+        if nucleotide_sequence:
+            nucleotide_records.append(
+                SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
             )
 
-            predictions.append(
-                [
-                    peptide_id,
-                    cleavage_pred["start"],
-                    cleavage_pred["stop"],
-                    "cleavage",
-                    class_pred["class"],
-                    "nlpprecursor",
-                    class_pred["score"],
-                    cleavage_pred["sequence"],
-                    cleavage_pred["score"],
-                ]
-            )
+            nucleotide_peptide_sequence = nucleotide_sequence[
+                cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3
+            ]
+            if utils.verify_translation(
+                nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
+            ):
+                nucleotide_peptide_records.append(
+                    SeqRecord(
+                        Seq(nucleotide_peptide_sequence),
+                        id=peptide_id,
+                        description=description,
+                    )
+                )
 
     SeqIO.write(protein_records, proteins_output_file, "fasta")
     SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")
