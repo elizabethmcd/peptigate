@@ -56,11 +56,11 @@ def extract_nucleotide_peptide_sequences(
         if not utils.verify_translation(
             nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=False
         ):
-            print(
+            raise ValueError(
                 f"Warning: Translation mismatch for {transcript_id}. "
                 "Check the reading frame and positions."
             )
-            continue
+        
         output_record = peptide_record
         output_record.seq = nucleotide_peptide_sequence
         nucleotide_peptide_records.append(output_record)
