@@ -124,11 +124,16 @@ def extract_peptide_sequences(
                 # sequence.
                 if nucleotide_sequence:
                     nucleotide_peptide_sequence = nucleotide_sequence[(start - 1) * 3 : end * 3]
-                    nucleotide_peptide_records.append(
-                        SeqRecord(
-                            Seq(nucleotide_peptide_sequence), id=peptide_id, description=description
+                    if utils.verify_translation(
+                        nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
+                    ):
+                        nucleotide_peptide_records.append(
+                            SeqRecord(
+                                Seq(nucleotide_peptide_sequence),
+                                id=peptide_id,
+                                description=description
+                            )
                         )
-                    )
 
         # not with the rest of the for loop because don't want repeated multiple times if multiple
         # peptides per protein/transcript
