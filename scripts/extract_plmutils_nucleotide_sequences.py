@@ -30,10 +30,10 @@ def extract_positions_and_frame(protein_header):
 
 def process_by_positions_and_frame(seq, start, end, frame):
     """Extract the Handle reverse complementation based on frame."""
+    seq = seq[start:end]
     if frame < 0:
-        return seq[start:end].reverse_complement()
-    else:
-        return seq[start:end]
+        seq = seq.reverse_complement()
+    return seq
 
 
 def extract_nucleotide_peptide_sequences(
