@@ -50,7 +50,8 @@ def extract_peptide_sequences(
     - nucleotide_peptides_output_file (str): The path to the output file where peptide sequences
       will be saved. Peptide sequences written to this file are saved in nucleotide FASTA format,
       with headers indicating their source ID, start and end positions in the protein sequence, and
-      that DeepPeptide was the source of the annotation.
+      that DeepPeptide was the source of the annotation. This means this file only contains the
+      nucleotide sequence for the peptide itself. 
     - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
 
     Returns:

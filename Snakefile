@@ -318,9 +318,9 @@ rule extract_plmutils_predicted_peptides_as_nucleotides:
     shell:
         """
         python  scripts/extract_plmutils_nucleotide_sequences.py \
-            -n {input.fna} \
-            -p {input.peptide_faa} \
-            -o {output.peptide_ffn}
+            --nucleotide_fasta_file {input.fna} \
+            --protein_peptides_fasta_file  {input.peptide_faa} \
+            --nucleotide_peptides_output_file {output.peptide_ffn}
         """
 
 
