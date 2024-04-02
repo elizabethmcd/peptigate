@@ -53,10 +53,8 @@ def extract_nucleotide_peptide_sequences(
             nucleotide_sequences[transcript_id].seq, start, end, frame
         )
         protein_peptide_sequence = peptide_record.seq
-        # this is dumb but to be able to refactor the verify_translation() function, the input
-        # sequences need to be formatted as str(), not as Seq().
         if not utils.verify_translation(
-            str(nucleotide_peptide_sequence), str(protein_peptide_sequence), to_stop=False
+            nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=False
         ):
             print(
                 f"Warning: Translation mismatch for {transcript_id}. "

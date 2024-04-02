@@ -26,6 +26,25 @@ CONTIGS_LONGER = Path(config["contigs_longer_than_r2t_minimum_length"])
 PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 ################################################################################
+## Output file suffix conventions
+################################################################################
+
+"""
+Note that we follow the conventions of the prokka tool for output file suffixes where possible.
+* fna: nucleotide FASTA file of input contig sequences. These are transcripts from a transcriptome.
+* faa: protein fasta file of translated CDS sequences.
+    * faa: protein fasta file of translated CDS sequences for all predicted input proteins.
+    * parent_faa: protein fasta file of translated CDS sequences for parent proteins of cleavage
+                  peptides.
+    * peptide_faa: protein fasta file of translated predicted peptide sequences
+* ffn: nucleotide fasta file of CDS sequences.
+    * ffn: nucleotide fasta file of all CDS sequences for all predicted input CDSs
+    * parent_ffn: nucleotide fasta file of CDS sequences for parent CDSs of cleavage peptides
+    * peptide_ffn: nucleotide fasta file of predicted peptide sequences
+"""
+
+
+################################################################################
 ## sORF prediction
 ################################################################################
 
