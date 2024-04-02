@@ -60,7 +60,7 @@ def extract_nucleotide_peptide_sequences(
                 f"Warning: Translation mismatch for {transcript_id}. "
                 "Check the reading frame and positions."
             )
-        
+
         output_record = peptide_record
         output_record.seq = nucleotide_peptide_sequence
         nucleotide_peptide_records.append(output_record)

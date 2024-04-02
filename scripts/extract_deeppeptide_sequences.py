@@ -131,7 +131,7 @@ def extract_peptide_sequences(
                             SeqRecord(
                                 Seq(nucleotide_peptide_sequence),
                                 id=peptide_id,
-                                description=description
+                                description=description,
                             )
                         )
 
