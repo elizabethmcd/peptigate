@@ -26,6 +26,25 @@ CONTIGS_LONGER = Path(config["contigs_longer_than_r2t_minimum_length"])
 PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 ################################################################################
+## Output file suffix conventions
+################################################################################
+
+"""
+Note that we follow the conventions of the prokka tool for output file suffixes where possible.
+* fna: nucleotide FASTA file of input contig sequences. These are transcripts from a transcriptome.
+* faa: protein fasta file of translated CDS sequences.
+    * faa: protein fasta file of translated CDS sequences for all predicted input proteins.
+    * parent_faa: protein fasta file of translated CDS sequences for parent proteins of cleavage
+                  peptides.
+    * peptide_faa: protein fasta file of translated predicted peptide sequences
+* ffn: nucleotide fasta file of CDS sequences.
+    * ffn: nucleotide fasta file of all CDS sequences for all predicted input CDSs
+    * parent_ffn: nucleotide fasta file of CDS sequences for parent CDSs of cleavage peptides
+    * peptide_ffn: nucleotide fasta file of predicted peptide sequences
+"""
+
+
+################################################################################
 ## sORF prediction
 ################################################################################
 
@@ -47,7 +66,7 @@ rule combine_contigs:
         contigs_shorter=CONTIGS_SHORTER,
         contigs_longer=CONTIGS_LONGER,
     output:
-        all_contigs=OUTPUT_DIR / "sORF" / "contigs" / "all_input_contigs.fa",
+        all_contigs=OUTPUT_DIR / "sORF" / "contigs" / "all_input_contigs.fna",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -93,15 +112,15 @@ rule filter_contigs_to_no_predicted_ORF:
     This rule eliminates transcripts that contained a transdecoder-predicted ORF.
     """
     input:
-        fa=rules.combine_contigs.output.all_contigs,
+        fna=rules.combine_contigs.output.all_contigs,
         names=rules.get_coding_contig_names.output.names,
     output:
-        fa=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_annotated_orf.fa",
+        fna=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_annotated_orf.fna",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-        seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
+        seqkit grep -v -f {input.names} {input.fna} -o {output.fna}
         """
 
 
@@ -144,7 +163,7 @@ rule diamond_blastx_transcripts_against_uniref50_database:
     """
     input:
         db=rules.make_diamond_db_from_uniref50_database.output.db,
-        peptide=rules.filter_contigs_to_no_predicted_ORF.output.fa,
+        fna=rules.filter_contigs_to_no_predicted_ORF.output.fna,
     output:
         tsv=OUTPUT_DIR / "sORF" / "filtering" / "0_blastx" / "matches.tsv",
     params:
@@ -154,7 +173,7 @@ rule diamond_blastx_transcripts_against_uniref50_database:
     threads: 8
     shell:
         """
-        diamond blastx -p {threads} -d {params.dbprefix} -q {input.peptide} -o {output.tsv} \
+        diamond blastx -p {threads} -d {params.dbprefix} -q {input.fna} -o {output.tsv} \
             --header simple \
             --outfmt 6 qseqid sseqid full_sseq pident length qlen slen qcovhsp scovhsp mismatch gapopen qstart qend sstart send evalue bitscore
         """
@@ -185,18 +204,18 @@ rule filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits:
     These transcripts will then be scanned for sORFs by plmutils.
     """
     input:
-        fa=rules.filter_contigs_to_no_predicted_ORF.output.fa,
+        fna=rules.filter_contigs_to_no_predicted_ORF.output.fna,
         names=rules.filter_transcript_uniref50_hits.output.txt,
     output:
-        fa=OUTPUT_DIR
+        fna=OUTPUT_DIR
         / "sORF"
         / "filtering"
-        / "contigs_with_no_predicted_orf_and_no_uniref50_blast_hit.fa",
+        / "contigs_with_no_predicted_orf_and_no_uniref50_blast_hit.fna",
     conda:
         "envs/seqkit.yml"
     shell:
         """
-        seqkit grep -v -f {input.names} {input.fa} -o {output.fa}
+        seqkit grep -v -f {input.names} {input.fna} -o {output.fna}
         """
 
 
@@ -206,9 +225,9 @@ rule plmutils_translate:
     translates it into amino acid sequences.
     """
     input:
-        rules.filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits.output.fa,
+        rules.filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits.output.fna,
     output:
-        faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs.faa",
+        peptide_faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs.faa",
     conda:
         "envs/plmutils.yml"
     shell:
@@ -219,9 +238,9 @@ rule plmutils_translate:
 
 rule length_filter_plmutils_translate_output:
     input:
-        rules.plmutils_translate.output.faa,
+        rules.plmutils_translate.output.peptide_faa,
     output:
-        faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs_filtered.faa",
+        peptide_faa=OUTPUT_DIR / "sORF" / "plmutils" / "translated_contigs_filtered.faa",
     conda:
         "envs/seqkit.yml"
     shell:
@@ -240,7 +259,7 @@ rule plmutils_embed:
     The parameter --layer-ind -1 means to extract the embedding from the last layer of the model.
     """
     input:
-        rules.length_filter_plmutils_translate_output.output.faa,
+        rules.length_filter_plmutils_translate_output.output.peptide_faa,
     output:
         npy=OUTPUT_DIR / "sORF" / "plmutils" / "embedded_contigs_filtered.npy",
     conda:
@@ -257,17 +276,17 @@ rule plmutils_embed:
 rule plmutils_predict:
     input:
         embeddings=rules.plmutils_embed.output.npy,
-        faa=rules.length_filter_plmutils_translate_output.output.faa,
+        peptide_faa=rules.length_filter_plmutils_translate_output.output.peptide_faa,
         model=PLMUTILS_MODEL_DIR,
     output:
-        csv=OUTPUT_DIR / "sORF" / "plmutils" / "predictions.csv",
+        csv=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_predictions.csv",
     conda:
         "envs/plmutils.yml"
     shell:
         """
         plmutils predict --model-dirpath {input.model} \
             --embeddings-filepath {input.embeddings} \
-            --fasta-filepath {input.faa} \
+            --fasta-filepath {input.peptide_faa} \
             --output-filepath {output.csv}
         """
 
@@ -275,16 +294,33 @@ rule plmutils_predict:
 rule extract_plmutils_predicted_peptides:
     input:
         csv=rules.plmutils_predict.output.csv,
-        faa=rules.length_filter_plmutils_translate_output.output.faa,
+        peptide_faa=rules.length_filter_plmutils_translate_output.output.peptide_faa,
     output:
-        names=OUTPUT_DIR / "sORF" / "plmutils" / "peptide_names.faa",
-        faa=OUTPUT_DIR / "sORF" / "plmutils" / "peptides.faa",
+        names=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptide_names.faa",
+        peptide_faa=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptides.faa",
     conda:
         "envs/seqkit.yml"
     shell:
         """
         grep "positive" {input.csv} | cut -d, -f1 > {output.names} 
-        seqkit grep -f {output.names} {input.faa} -o {output.faa}
+        seqkit grep -f {output.names} {input.peptide_faa} -o {output.peptide_faa}
+        """
+
+
+rule extract_plmutils_predicted_peptides_as_nucleotides:
+    input:
+        fna=rules.filter_no_predicted_ORF_contigs_to_no_uniref50_long_hits.output.fna,
+        peptide_faa=rules.extract_plmutils_predicted_peptides.output.peptide_faa,
+    output:
+        peptide_ffn=OUTPUT_DIR / "sORF" / "plmutils" / "plmutils_peptides.ffn",
+    conda:
+        "envs/biopython.yml"
+    shell:
+        """
+        python  scripts/extract_plmutils_nucleotide_sequences.py \
+            --nucleotide_fasta_file {input.fna} \
+            --protein_peptides_fasta_file  {input.peptide_faa} \
+            --nucleotide_peptides_output_file {output.peptide_ffn}
         """
 
 
@@ -355,17 +391,29 @@ rule nlpprecursor:
     """
     input:
         faa=rules.filter_protein_sequences_with_nonstandard_amino_acids.output.faa,
+        ffn=ORFS_NUCLEOTIDES,
         model=rules.download_nlpprecursor_models.output.model,
     output:
+        parent_faa=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptide_parents.faa",
+        parent_ffn=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptide_parents.ffn",
+        peptide_faa=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.faa",
+        peptide_ffn=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.ffn",
         tsv=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_predictions.tsv",
-        peptide=OUTPUT_DIR / "cleavage" / "nlpprecursor" / "nlpprecursor_peptides.fasta",
     params:
         modelsdir=INPUT_DIR / "models" / "nlpprecursor" / "models/",
     conda:
         "envs/nlpprecursor.yml"
     shell:
         """
-        python scripts/run_nlpprecursor.py {params.modelsdir} {input.faa} {output.tsv} {output.peptide}
+        python scripts/run_nlpprecursor.py \
+            {params.modelsdir} \
+            {input.faa} \
+            {input.ffn} \
+            {output.parent_faa} \
+            {output.parent_ffn} \
+            {output.peptide_faa} \
+            {output.peptide_ffn} \
+            {output.tsv}
         """
 
 
@@ -412,17 +460,28 @@ rule extract_deeppeptide_sequences:
     in FASTA format.
     """
     input:
-        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
         json=rules.deeppeptide.output.json,
+        faa=rules.remove_stop_codon_asterisk_from_transdecoder_ORFs.output.faa,
+        ffn=ORFS_NUCLEOTIDES,
     output:
-        propeptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "propeptides.faa",
-        peptide=OUTPUT_DIR / "cleavage" / "deeppeptide" / "peptides.faa",
-        tsv=OUTPUT_DIR / "cleavage" / "deeppeptide" / "predictions.tsv",
+        parent_faa=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptide_parents.faa",
+        parent_ffn=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptide_parents.ffn",
+        peptide_faa=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptides.faa",
+        peptide_ffn=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_peptides.ffn",
+        tsv=OUTPUT_DIR / "cleavage" / "deeppeptide" / "deeppeptide_predictions.tsv",
     conda:
         "envs/biopython.yml"
     shell:
         """
-        python scripts/extract_deeppeptide_sequences.py {input.json} {input.faa} {output.propeptide} {output.peptide} {output.tsv}
+        python scripts/extract_deeppeptide_sequences.py \
+            {input.json} \
+            {input.faa} \
+            {input.ffn} \
+            {output.parent_faa} \
+            {output.parent_ffn} \
+            {output.peptide_faa} \
+            {output.peptide_ffn} \
+            {output.tsv}
         """
 
 
@@ -431,18 +490,62 @@ rule extract_deeppeptide_sequences:
 ################################################################################
 
 
-rule combine_peptide_predictions:
+rule combine_peptide_faa_predictions:
     input:
-        sorf=rules.extract_plmutils_predicted_peptides.output.faa,
-        nlpprecursor=rules.nlpprecursor.output.peptide,
-        deeppeptide=rules.extract_deeppeptide_sequences.output.peptide,
+        sorf=rules.extract_plmutils_predicted_peptides.output.peptide_faa,
+        nlpprecursor=rules.nlpprecursor.output.peptide_faa,
+        deeppeptide=rules.extract_deeppeptide_sequences.output.peptide_faa,
     output:
-        peptide=OUTPUT_DIR / "annotation" / "combined_peptide_predictions" / "peptides.faa",
+        peptide_faa=OUTPUT_DIR / "predictions" / "peptides.faa",
     shell:
         """
-        cat {input} > {output.peptide}
+        cat {input} > {output.peptide_faa}
         """
 
+
+rule convert_peptide_faa_to_tsv:
+    input:
+        peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa,
+    output:
+        tsv=OUTPUT_DIR / "predictions" / "peptides_faa.tsv",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        seqkit fx2tab --only-id {input} -o {output}
+        """
+
+
+rule combine_peptide_ffn_predictions:
+    input:
+        sorf=rules.extract_plmutils_predicted_peptides_as_nucleotides.output.peptide_ffn,
+        nlpprecursor=rules.nlpprecursor.output.peptide_ffn,
+        deeppeptide=rules.extract_deeppeptide_sequences.output.peptide_ffn,
+    output:
+        peptide_ffn=OUTPUT_DIR / "predictions" / "peptides.ffn",
+    shell:
+        """
+        cat {input} > {output.peptide_ffn}
+        """
+
+
+rule convert_peptide_ffn_to_tsv:
+    input:
+        peptide_ffn=rules.combine_peptide_ffn_predictions.output.peptide_ffn,
+    output:
+        tsv=OUTPUT_DIR / "predictions" / "peptides_ffn.tsv",
+    conda:
+        "envs/seqkit.yml"
+    shell:
+        """
+        seqkit fx2tab --only-id {input} -o {output}
+        """
+
+
+# TODO: decide whether to output ffn/faa of parent transcripts as a combined file.
+#       I haven't needed it yet in subsequent analyses, so not outputting for now.
+#       Note plmutils does not currently output parent transcript and would not have a parent
+#       protein sequence.
 
 ################################################################################
 ## Compare against known peptides
@@ -482,7 +585,7 @@ rule make_diamond_db_from_peptipedia_database:
 rule diamond_blastp_peptide_predictions_against_peptipedia_database:
     input:
         db=rules.make_diamond_db_from_peptipedia_database.output.db,
-        peptide=rules.combine_peptide_predictions.output.peptide,
+        peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa,
     output:
         tsv=OUTPUT_DIR / "annotation" / "peptipedia" / "blastp_matches.tsv",
     params:
@@ -491,7 +594,7 @@ rule diamond_blastp_peptide_predictions_against_peptipedia_database:
         "envs/diamond.yml"
     shell:
         """
-        diamond blastp -d {params.dbprefix} -q {input.peptide} -o {output.tsv} --header simple \
+        diamond blastp -d {params.dbprefix} -q {input.peptide_faa} -o {output.tsv} --header simple \
          --outfmt 6 qseqid sseqid full_sseq pident length qlen slen mismatch gapopen qstart qend sstart send evalue bitscore
         """
 
@@ -506,9 +609,9 @@ rule run_deepsig:
     This rule uses deepsig to predict signal peptides in proteins using deep learning.
     """
     input:
-        peptide=rules.combine_peptide_predictions.output.peptide,
+        peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa,
     output:
-        tsv=OUTPUT_DIR / "annotation" / "deepsig" / "deepsig.tsv",
+        tsv=OUTPUT_DIR / "annotation" / "deepsig" / "deepsig_predictions.tsv",
     conda:
         "envs/deepsig.yml"
     shell:
@@ -520,14 +623,14 @@ rule run_deepsig:
 
 rule characterize_peptides:
     input:
-        peptide=rules.combine_peptide_predictions.output.peptide,
+        peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa,
     output:
         tsv=OUTPUT_DIR / "annotation" / "characteristics" / "peptide_characteristics.tsv",
     conda:
         "envs/peptides.yml"
     shell:
         """
-        python scripts/characterize_peptides.py {input.peptide} {output.tsv}
+        python scripts/characterize_peptides.py {input.peptide_faa} {output.tsv}
         """
 
 
@@ -586,7 +689,7 @@ rule run_autopeptideml:
     insufficient.
     """
     input:
-        peptide=rules.combine_peptide_predictions.output.peptide,
+        peptide_faa=rules.combine_peptide_faa_predictions.output.peptide_faa,
         model=rules.download_autopeptideml_models.output.model,
     output:
         tsv=OUTPUT_DIR
@@ -600,18 +703,38 @@ rule run_autopeptideml:
     shell:
         """
         python scripts/run_autopeptideml.py \
-            --input_fasta {input.peptide} \
+            --input_fasta {input.peptide_faa} \
             --model_folder {params.modelsdir}/{wildcards.autopeptideml_model_name}_1/ensemble \
             --model_name {wildcards.autopeptideml_model_name} \
             --output_tsv {output.tsv}
         """
 
 
-rule combine_peptide_annotations:
+rule combine_peptide_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
         plmutils=rules.plmutils_predict.output.csv,
+        faa_tab=rules.convert_peptide_faa_to_tsv.output.tsv,
+        ffn_tab=rules.convert_peptide_ffn_to_tsv.output.tsv,
+    output:
+        tsv=OUTPUT_DIR / "predictions" / "peptide_predictions.tsv",
+    conda:
+        "envs/tidyverse.yml"
+    shell:
+        """
+        Rscript scripts/combine_peptide_predictions.R \
+            --nlpprecursor_path {input.nlpprecursor} \
+            --deeppeptide_path {input.deeppeptide} \
+            --plmutils_path {input.plmutils} \
+            --faa_tab_path {input.faa_tab} \
+            --ffn_tab_path {input.ffn_tab} \
+            --output_predictions_path {output.tsv}
+        """
+
+
+rule combine_peptide_annotations:
+    input:
         autopeptideml=expand(
             rules.run_autopeptideml.output.tsv, autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
         ),
@@ -619,8 +742,7 @@ rule combine_peptide_annotations:
         peptipedia=rules.diamond_blastp_peptide_predictions_against_peptipedia_database.output.tsv,
         characteristics=rules.characterize_peptides.output.tsv,
     output:
-        tsv1=OUTPUT_DIR / "annotation" / "peptide_predictions.tsv",
-        tsv2=OUTPUT_DIR / "annotation" / "peptide_annotations.tsv",
+        tsv=OUTPUT_DIR / "predictions" / "peptide_annotations.tsv",
     params:
         autopeptidemldir=OUTPUT_DIR / "annotation" / "autopeptideml/",
     conda:
@@ -628,15 +750,11 @@ rule combine_peptide_annotations:
     shell:
         """
         Rscript scripts/combine_peptide_annotations.R \
-            --nlpprecursor_path {input.nlpprecursor} \
-            --deeppeptide_path {input.deeppeptide} \
-            --plmutils_path {input.plmutils} \
             --autopeptideml_dir {params.autopeptidemldir} \
             --deepsig_path {input.deepsig} \
             --peptipedia_path {input.peptipedia} \
             --characteristics_path {input.characteristics} \
-            --output_predictions_path {output.tsv1} \
-            --output_annotations_path {output.tsv2}
+            --output_annotations_path {output.tsv}
         """
 
 
@@ -648,7 +766,8 @@ rule combine_peptide_annotations:
 rule all:
     default_target: True
     input:
-        rules.combine_peptide_annotations.output.tsv1,
+        rules.combine_peptide_predictions.output.tsv,
+        rules.combine_peptide_annotations.output.tsv,
 
 
 rule predict_sORF:
@@ -657,7 +776,7 @@ rule predict_sORF:
     snakemake predict_sORF --software-deployment-method conda -j 8 
     """
     input:
-        sorf=rules.extract_plmutils_predicted_peptides.output.faa,
+        sorf=rules.extract_plmutils_predicted_peptides_as_nucleotides.output.peptide_ffn,
 
 
 rule predict_cleavage:
@@ -666,5 +785,5 @@ rule predict_cleavage:
     snakemake predict_cleavage --software-deployment-method conda -j 8 
     """
     input:
-        rules.nlpprecursor.output.peptide,
-        rules.extract_deeppeptide_sequences.output.peptide,
+        rules.nlpprecursor.output.peptide_faa,
+        rules.extract_deeppeptide_sequences.output.peptide_faa,
