@@ -45,8 +45,8 @@ combine_peptide_predictions <- function(nlpprecursor_path,
   
   deeppeptide <- read_tsv(deeppeptide_path)
   
-  sorf <- read_csv(sorf_path) %>%
-    select(peptide_id = sequence_id) %>%
+  sorf <- read_tsv(sorf_path, col_names = c("peptide_id", "protein_sequence")) %>%
+    select(-protein_sequence) %>%
     mutate(peptide_type = "sORF", 
            prediction_tool = "less_than_100aa")
   
@@ -55,7 +55,7 @@ combine_peptide_predictions <- function(nlpprecursor_path,
   
   peptide_faa <- read_tsv(faa_tab_path, col_names = c("peptide_id", "protein_sequence"))
   
-  peptide_predictions <- left_join(peptide_predictions, peptide_sequences, by = "peptide_id")
+  peptide_predictions <- left_join(peptide_predictions, peptide_faa, by = "peptide_id")
 }
 
 predictions_df<- combine_peptide_predictions(nlpprecursor_path = args$nlpprecursor_path,

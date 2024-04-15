@@ -149,7 +149,7 @@ rule nlpprecursor:
         "envs/nlpprecursor.yml"
     shell:
         """
-        python scripts/protein_input/run_nlpprecursor.py \
+        python scripts/run_nlpprecursor_protein_input.py \
             {params.modelsdir} \
             {input.faa} \
             {output.parent_faa} \
@@ -211,7 +211,7 @@ rule extract_deeppeptide_sequences:
         "envs/biopython.yml"
     shell:
         """
-        python scripts/protein_input/extract_deeppeptide_sequences.py \
+        python scripts/extract_deeppeptide_sequences_protein_input.py \
             {input.json} \
             {input.faa} \
             {output.parent_faa} \
@@ -432,7 +432,7 @@ rule combine_peptide_predictions:
         "envs/tidyverse.yml"
     shell:
         """
-        Rscript scripts/protein_input/combine_peptide_predictions.R \
+        Rscript scripts/combine_peptide_predictions_protein_input.R \
             --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
             --sorf_path {input.sorf} \
