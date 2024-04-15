@@ -129,11 +129,8 @@ def predict_ripp_sequences(models_dir, protein_fasta_file):
 def extract_ripp_sequences(
     filtered_predictions,
     protein_fasta_file,
-    nucleotide_fasta_file,
     proteins_output_file,
-    nucleotides_output_file,
     protein_peptides_output_file,
-    nucleotide_peptides_output_file,
     predictions_output_file,
 ):
     """
@@ -145,32 +142,19 @@ def extract_ripp_sequences(
       Produced by predict_ripp_sequences().
     - protein_fasta_file (str): The path to a FASTA file containing protein sequences.
       This should be the same file used to make the NLPPrecursor predictions.
-    - nucleotide_fasta_file (str): The path to a FASTA file containing nucleotide sequences.
-      This should include sequences for the same genes as used to make the NLPPrecursor predictions.
     - proteins_output_file (str): The path to the output file where protein sequences that gave rise
       to predicted peptides will be saved. Each sequence is written in amino acid FASTA format with
       its ID as the header.
-    - nucleotides_output_file (str): The path to the output file where gene sequences that gave rise
-      to predicted peptides will be saved. Each sequence is written in FASTA format with its ID as
-      the header.
     - protein_peptides_output_file (str): The path to the output file where peptide sequences will
       be saved. Peptide sequences written to this file are saved in amino acid FASTA format, with
       headers indicating their source ID, start and end positions in the protein sequence, and that
       NLPPrecursor was the source of the annotation.
-    - nucleotide_peptides_output_file (str): The path to the output file where peptide sequences
-      will be saved. Peptide sequences written to this file are saved in nucleotide FASTA format,
-      with headers indicating their source ID, start and end positions in the protein sequence, and
-      that NLPPrecursor was the source of the annotation. This means this file only contains the
-      nucleotide sequence for the peptide itself.
     - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
     """
     protein_sequences = utils.read_fasta(protein_fasta_file)
-    nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file)
 
     protein_records = []
-    nucleotide_records = []
     protein_peptide_records = []
-    nucleotide_peptide_records = []
     predictions = []
 
     for sequence, class_pred, cleavage_pred in filtered_predictions:
@@ -215,34 +199,8 @@ def extract_ripp_sequences(
                 )
             )
 
-        nucleotide_sequence = nucleotide_sequences.get(protein_id)
-        # Note that if transdecoder or similar is not used to predict CDS (protein and nucleotide),
-        # nucleotide sequences may not have the same ids as protein sequences and this extraction
-        # strategy may fail. When that is the case, we don't output anything, and the nucleotide
-        # sequence will not be reported for the protein sequence.
-        if nucleotide_sequence:
-            nucleotide_records.append(
-                SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
-            )
-
-            nucleotide_peptide_sequence = nucleotide_sequence[
-                cleavage_pred["start"] * 3 : cleavage_pred["stop"] * 3
-            ]
-            if utils.verify_translation(
-                nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
-            ):
-                nucleotide_peptide_records.append(
-                    SeqRecord(
-                        Seq(nucleotide_peptide_sequence),
-                        id=peptide_id,
-                        description=description,
-                    )
-                )
-
     SeqIO.write(protein_records, proteins_output_file, "fasta")
-    SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")
     SeqIO.write(protein_peptide_records, protein_peptides_output_file, "fasta")
-    SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_output_file, "fasta")
 
     with open(predictions_output_file, "w", newline="") as predictions_out:
         writer = csv.writer(predictions_out, delimiter="\t")
@@ -265,22 +223,16 @@ def extract_ripp_sequences(
 def main(
     models_dir,
     protein_fasta_file,
-    nucleotide_fasta_file,
     proteins_output_file,
-    nucleotides_output_file,
     protein_peptides_output_file,
-    nucleotide_peptides_output_file,
     predictions_output_file,
 ):
     filtered_predictions = predict_ripp_sequences(models_dir, protein_fasta_file)
     extract_ripp_sequences(
         filtered_predictions,
         protein_fasta_file,
-        nucleotide_fasta_file,
         proteins_output_file,
-        nucleotides_output_file,
         protein_peptides_output_file,
-        nucleotide_peptides_output_file,
         predictions_output_file,
     )
 
@@ -291,22 +243,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "protein_fasta_file", type=str, help="The protein FASTA file input to NLPprecursor."
     )
-    parser.add_argument(
-        "nucleotide_fasta_file", type=str, help="The nucleotide FASTA file for the genes."
-    )
     parser.add_argument("proteins_output_file", type=str, help="The output file path for proteins.")
-    parser.add_argument(
-        "nucleotides_output_file", type=str, help="The output file path for nucleotide sequences."
-    )
     parser.add_argument(
         "protein_peptides_output_file",
         type=str,
         help="The output file path for peptides in amino acid format.",
-    )
-    parser.add_argument(
-        "nucleotide_peptides_output_file",
-        type=str,
-        help="The output file path for peptides in nucleotide format.",
     )
     parser.add_argument(
         "predictions_output_file", type=str, help="The output file path for predictions."
@@ -316,10 +257,7 @@ if __name__ == "__main__":
     main(
         args.models_dir,
         args.protein_fasta_file,
-        args.nucleotide_fasta_file,
         args.proteins_output_file,
-        args.nucleotides_output_file,
         args.protein_peptides_output_file,
-        args.nucleotide_peptides_output_file,
         args.predictions_output_file,
     )
