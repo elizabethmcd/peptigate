@@ -1,6 +1,6 @@
 [project]
-name = "TODO: Tool name"
-description = "TODO: Tool description"
+name = "peptigate"
+description = "Investigate transcriptomes for peptides"
 version = "0.0.0"
 readme = "README.md"
 requires-python = ">=3.9"
