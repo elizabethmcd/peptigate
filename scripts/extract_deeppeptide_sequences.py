@@ -171,22 +171,43 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract peptide sequences from DeepPeptide JSON.")
-    parser.add_argument("--json_file", type=str, required=True,
-                        help="The JSON file output by DeepPeptide.")
-    parser.add_argument("--protein_fasta_file", type=str, required=True,
-                        help="The protein FASTA file input to DeepPeptide.")
-    parser.add_argument("--nucleotide_fasta_file", type=str,
-                        help="Optional nucleotide FASTA file for genes.")
-    parser.add_argument("--proteins_output_file", type=str, required=True,
-                        help="Output file path for proteins.")
-    parser.add_argument("--nucleotides_output_file", type=str,
-                        help="Optional output file path for nucleotide sequences.")
-    parser.add_argument("--protein_peptides_output_file", type=str, required=True,
-                        help="Output file path for peptide sequences in amino acid format.")
-    parser.add_argument("--nucleotide_peptides_output_file", type=str,
-                        help="Optional output file path for peptide sequences in nucleotide format")
-    parser.add_argument("--predictions_output_file", type=str, required=True,
-                        help="Output file path for predictions.")
+    parser.add_argument(
+        "--json_file", type=str, required=True, help="The JSON file output by DeepPeptide."
+    )
+    parser.add_argument(
+        "--protein_fasta_file",
+        type=str,
+        required=True,
+        help="The protein FASTA file input to DeepPeptide.",
+    )
+    parser.add_argument(
+        "--nucleotide_fasta_file", type=str, help="Optional nucleotide FASTA file for genes."
+    )
+    parser.add_argument(
+        "--proteins_output_file", type=str, required=True, help="Output file path for proteins."
+    )
+    parser.add_argument(
+        "--nucleotides_output_file",
+        type=str,
+        help="Optional output file path for nucleotide sequences.",
+    )
+    parser.add_argument(
+        "--protein_peptides_output_file",
+        type=str,
+        required=True,
+        help="Output file path for peptide sequences in amino acid format.",
+    )
+    parser.add_argument(
+        "--nucleotide_peptides_output_file",
+        type=str,
+        help="Optional output file path for peptide sequences in nucleotide format",
+    )
+    parser.add_argument(
+        "--predictions_output_file",
+        type=str,
+        required=True,
+        help="Output file path for predictions.",
+    )
 
     args = parser.parse_args()
 
