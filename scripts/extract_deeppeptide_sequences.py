@@ -11,12 +11,12 @@ from Bio.SeqRecord import SeqRecord
 def extract_peptide_sequences(
     data,
     protein_fasta_file,
-    nucleotide_fasta_file,
     proteins_output_file,
-    nucleotides_output_file,
     protein_peptides_output_file,
-    nucleotide_peptides_output_file,
     predictions_output_file,
+    nucleotide_fasta_file=None,
+    nucleotides_output_file=None,
+    nucleotide_peptides_output_file=None,
 ):
     """
     Extract gene and peptide sequences based on the data dictionary and FASTA file,
@@ -73,7 +73,9 @@ def extract_peptide_sequences(
         predictions_output_file='path/to/output.tsv')
     """
     protein_sequences = utils.read_fasta(protein_fasta_file)
-    nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file)
+    nucleotide_sequences = (
+        utils.read_fasta(nucleotide_fasta_file) if nucleotide_fasta_file else None
+    )
 
     protein_records = []
     nucleotide_records = []
@@ -84,13 +86,11 @@ def extract_peptide_sequences(
     for protein_key, protein_info in data["PREDICTIONS"].items():
         protein_id = protein_key.split()[0][1:]
         peptides = protein_info.get("peptides")
-
         protein_sequence = protein_sequences.get(protein_id)
-        nucleotide_sequence = nucleotide_sequences.get(protein_id)
+        nucleotide_sequence = nucleotide_sequences.get(protein_id) if nucleotide_sequences else None
 
         if protein_sequence and peptides:
             protein_records.append(SeqRecord(Seq(protein_sequence), id=protein_id, description=""))
-
             for peptide in peptides:
                 start, end, peptide_class = peptide["start"], peptide["end"], peptide["type"]
                 protein_peptide_sequence = protein_sequence[start - 1 : end]
@@ -107,11 +107,9 @@ def extract_peptide_sequences(
                         }.items()
                     ]
                 )
-
                 protein_peptide_records.append(
                     SeqRecord(Seq(protein_peptide_sequence), id=peptide_id, description=description)
                 )
-
                 predictions.append(
                     [peptide_id, start, end, "cleavage", peptide_class, "deeppeptide"]
                 )
@@ -124,28 +122,24 @@ def extract_peptide_sequences(
                 # sequence.
                 if nucleotide_sequence:
                     nucleotide_peptide_sequence = nucleotide_sequence[(start - 1) * 3 : end * 3]
-                    if utils.verify_translation(
-                        nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
-                    ):
-                        nucleotide_peptide_records.append(
-                            SeqRecord(
-                                Seq(nucleotide_peptide_sequence),
-                                id=peptide_id,
-                                description=description,
-                            )
-                        )
+                    nucleotide_peptide_records.append(
+                        SeqRecord(
+                            Seq(nucleotide_peptide_sequence), id=peptide_id, description=description
+                        ),
+                    )
 
-        # not with the rest of the for loop because don't want repeated multiple times if multiple
-        # peptides per protein/transcript
-        if nucleotide_sequence and peptides:
-            nucleotide_records.append(
-                SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
-            )
+            # not with the rest of the for loop because don't want repeated multiple times if
+            # multiple peptides per protein/transcript
+            if nucleotide_sequence and peptides:
+                nucleotide_records.append(
+                    SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
+                )
 
     SeqIO.write(protein_records, proteins_output_file, "fasta")
-    SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")
     SeqIO.write(protein_peptide_records, protein_peptides_output_file, "fasta")
-    SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_output_file, "fasta")
+    if nucleotide_fasta_file:
+        SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")
+        SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_output_file, "fasta")
 
     with open(predictions_output_file, "w", newline="") as predictions_out:
         writer = csv.writer(predictions_out, delimiter="\t")
@@ -155,68 +149,45 @@ def extract_peptide_sequences(
         writer.writerows(predictions)
 
 
-def main(
-    json_file,
-    protein_fasta_file,
-    nucleotide_fasta_file,
-    proteins_output_file,
-    nucleotides_output_file,
-    protein_peptides_output_file,
-    nucleotide_peptides_output_file,
-    predictions_output_file,
-):
-    with open(json_file) as f:
+def main(args):
+    with open(args.json_file) as f:
         data = json.load(f)
 
     extract_peptide_sequences(
         data,
-        protein_fasta_file,
-        nucleotide_fasta_file,
-        proteins_output_file,
-        nucleotides_output_file,
-        protein_peptides_output_file,
-        nucleotide_peptides_output_file,
-        predictions_output_file,
+        args.protein_fasta_file,
+        args.proteins_output_file,
+        args.protein_peptides_output_file,
+        args.predictions_output_file,
+        nucleotide_fasta_file=args.nucleotide_fasta_file if args.nucleotide_fasta_file else None,
+        nucleotides_output_file=(
+            args.nucleotides_output_file if args.nucleotide_fasta_file else None
+        ),
+        nucleotide_peptides_output_file=(
+            args.nucleotide_peptides_output_file if args.nucleotide_fasta_file else None
+        ),
     )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract peptide sequences from DeepPeptide JSON.")
-
-    parser.add_argument("json_file", type=str, help="The JSON file output by DeepPeptide.")
-    parser.add_argument(
-        "protein_fasta_file", type=str, help="The protein FASTA file input to DeepPeptide."
-    )
-    parser.add_argument(
-        "nucleotide_fasta_file", type=str, help="The nucleotide FASTA file for the genes."
-    )
-    parser.add_argument("proteins_output_file", type=str, help="The output file path for proteins.")
-    parser.add_argument(
-        "nucleotides_output_file", type=str, help="The output file path for nucleotide sequences."
-    )
-    parser.add_argument(
-        "protein_peptides_output_file",
-        type=str,
-        help="The output file path for peptides in amino acid format.",
-    )
-    parser.add_argument(
-        "nucleotide_peptides_output_file",
-        type=str,
-        help="The output file path for peptides in nucleotide format.",
-    )
-    parser.add_argument(
-        "predictions_output_file", type=str, help="The output file path for predictions."
-    )
+    parser.add_argument("--json_file", type=str, required=True,
+                        help="The JSON file output by DeepPeptide.")
+    parser.add_argument("--protein_fasta_file", type=str, required=True,
+                        help="The protein FASTA file input to DeepPeptide.")
+    parser.add_argument("--nucleotide_fasta_file", type=str,
+                        help="Optional nucleotide FASTA file for genes.")
+    parser.add_argument("--proteins_output_file", type=str, required=True,
+                        help="Output file path for proteins.")
+    parser.add_argument("--nucleotides_output_file", type=str,
+                        help="Optional output file path for nucleotide sequences.")
+    parser.add_argument("--protein_peptides_output_file", type=str, required=True,
+                        help="Output file path for peptide sequences in amino acid format.")
+    parser.add_argument("--nucleotide_peptides_output_file", type=str,
+                        help="Optional output file path for peptide sequences in nucleotide format")
+    parser.add_argument("--predictions_output_file", type=str, required=True,
+                        help="Output file path for predictions.")
 
     args = parser.parse_args()
 
-    main(
-        args.json_file,
-        args.protein_fasta_file,
-        args.nucleotide_fasta_file,
-        args.proteins_output_file,
-        args.nucleotides_output_file,
-        args.protein_peptides_output_file,
-        args.nucleotide_peptides_output_file,
-        args.predictions_output_file,
-    )
+    main(args)
