@@ -35,24 +35,26 @@ def extract_peptide_sequences(
       positions.
     - protein_fasta_file (str): The path to a FASTA file containing protein sequences.
       This should be the same file used to make the DeepPeptide predictions.
-    - nucleotide_fasta_file (str): The path to a FASTA file containing nucleotide sequences.
-      This should include sequences for the same genes as used to make the DeepPeptide predictions.
     - proteins_output_file (str): The path to the output file where protein sequences that gave rise
       to predicted peptides will be saved. Each sequence is written in amino acid FASTA format with
       its ID as the header.
-    - nucleotides_output_file (str): The path to the output file where gene sequences that gave rise
-      to predicted peptides will be saved. Each sequence is written in FASTA format with its ID as
-      the header.
     - protein_peptides_output_file (str): The path to the output file where peptide sequences will
       be saved. Peptide sequences written to this file are saved in amino acid FASTA format, with
       headers indicating their source ID, start and end positions in the protein sequence, and that
       DeepPeptide was the source of the annotation.
+    - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
+    - nucleotide_fasta_file (str): The path to a FASTA file containing nucleotide sequences.
+      This should include sequences for the same genes as used to make the DeepPeptide predictions.
+      Optional.
+    - nucleotides_output_file (str): The path to the output file where gene sequences that gave rise
+      to predicted peptides will be saved. Each sequence is written in FASTA format with its ID as
+      the header. Optional but must be provided if nucleotide_fasta_file is given.
     - nucleotide_peptides_output_file (str): The path to the output file where peptide sequences
       will be saved. Peptide sequences written to this file are saved in nucleotide FASTA format,
       with headers indicating their source ID, start and end positions in the protein sequence, and
       that DeepPeptide was the source of the annotation. This means this file only contains the
-      nucleotide sequence for the peptide itself.
-    - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
+      nucleotide sequence for the peptide itself. Optional but must be provided if
+      nucleotide_fasta_file is given.
 
     Returns:
     None
@@ -73,9 +75,7 @@ def extract_peptide_sequences(
         predictions_output_file='path/to/output.tsv')
     """
     protein_sequences = utils.read_fasta(protein_fasta_file)
-    nucleotide_sequences = (
-        utils.read_fasta(nucleotide_fasta_file) if nucleotide_fasta_file else {}
-    )
+    nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file) if nucleotide_fasta_file else {}
 
     protein_records = []
     nucleotide_records = []
@@ -129,9 +129,9 @@ def extract_peptide_sequences(
                             SeqRecord(
                                 Seq(nucleotide_peptide_sequence),
                                 id=peptide_id,
-                                description=description
-                        ),
-                    )
+                                description=description,
+                            ),
+                        )
 
             # We add the nucleotide record outside of the for-loop because we don't want to create
             # it multiple times if there are multiple peptides per protein/transcript.
@@ -164,9 +164,9 @@ def main(args):
         args.proteins_output_file,
         args.protein_peptides_output_file,
         args.predictions_output_file,
-        nucleotide_fasta_file=args.nucleotide_fasta_file
+        nucleotide_fasta_file=args.nucleotide_fasta_file,
         nucleotides_output_file=args.nucleotides_output_file,
-        nucleotide_peptides_output_file=nucleotide_peptides_output_file,
+        nucleotide_peptides_output_file=args.nucleotide_peptides_output_file,
     )
 
 
@@ -182,15 +182,7 @@ if __name__ == "__main__":
         help="The protein FASTA file input to DeepPeptide.",
     )
     parser.add_argument(
-        "--nucleotide_fasta_file", type=str, help="Optional nucleotide FASTA file for genes."
-    )
-    parser.add_argument(
         "--proteins_output_file", type=str, required=True, help="Output file path for proteins."
-    )
-    parser.add_argument(
-        "--nucleotides_output_file",
-        type=str,
-        help="Optional output file path for nucleotide sequences.",
     )
     parser.add_argument(
         "--protein_peptides_output_file",
@@ -199,15 +191,23 @@ if __name__ == "__main__":
         help="Output file path for peptide sequences in amino acid format.",
     )
     parser.add_argument(
-        "--nucleotide_peptides_output_file",
-        type=str,
-        help="Optional output file path for peptide sequences in nucleotide format",
-    )
-    parser.add_argument(
         "--predictions_output_file",
         type=str,
         required=True,
         help="Output file path for predictions.",
+    )
+    parser.add_argument(
+        "--nucleotide_fasta_file", type=str, help="Optional nucleotide FASTA file for genes."
+    )
+    parser.add_argument(
+        "--nucleotides_output_file",
+        type=str,
+        help="Optional output file path for nucleotide sequences.",
+    )
+    parser.add_argument(
+        "--nucleotide_peptides_output_file",
+        type=str,
+        help="Optional output file path for peptide sequences in nucleotide format",
     )
 
     args = parser.parse_args()

@@ -155,7 +155,7 @@ def extract_ripp_sequences(
     - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
     - nucleotide_fasta_file (str): The path to a FASTA file containing nucleotide sequences.
       This should include sequences for the same genes as used to make the NLPPrecursor predictions.
-      Optional. 
+      Optional.
     - nucleotides_output_file (str): The path to the output file where gene sequences that gave rise
       to predicted peptides will be saved. Each sequence is written in FASTA format with its ID as
       the header. Optional but must be provided if nucleotide_fasta_file is provided.
@@ -172,16 +172,13 @@ def extract_ripp_sequences(
     predictions = []
 
     user_did_provide_nucleotide_files = (
-        nucleotide_fasta_file and
-        nucleotides_output_file and
-        nucleotide_peptides_output_file
+        nucleotide_fasta_file and nucleotides_output_file and nucleotide_peptides_output_file
     )
 
-    partial_nucleotide_files_provided = any([
-       nucleotide_fasta_file, 
-       nucleotides_output_file, 
-       nucleotide_peptides_output_file
-    ]) and not user_did_provide_nucleotide_files
+    partial_nucleotide_files_provided = (
+        any([nucleotide_fasta_file, nucleotides_output_file, nucleotide_peptides_output_file])
+        and not user_did_provide_nucleotide_files
+    )
 
     if user_did_provide_nucleotide_files:
         nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file)
@@ -284,16 +281,16 @@ def extract_ripp_sequences(
 def main(args):
     filtered_predictions = predict_ripp_sequences(args.models_dir, args.protein_fasta_file)
 
-        extract_ripp_sequences(
-            filtered_predictions,
-            args.protein_fasta_file,
-            args.proteins_output_file,
-            args.protein_peptides_output_file,
-            args.predictions_output_file,
-            args.nucleotide_fasta_file,
-            args.nucleotides_output_file,
-            args.nucleotide_peptides_output_file,
-        )
+    extract_ripp_sequences(
+        filtered_predictions,
+        args.protein_fasta_file,
+        args.proteins_output_file,
+        args.protein_peptides_output_file,
+        args.predictions_output_file,
+        args.nucleotide_fasta_file,
+        args.nucleotides_output_file,
+        args.nucleotide_peptides_output_file,
+    )
 
 
 if __name__ == "__main__":
