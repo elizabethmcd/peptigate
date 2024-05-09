@@ -269,11 +269,6 @@ def extract_ripp_sequences(
 def main(args):
     filtered_predictions = predict_ripp_sequences(args.models_dir, args.protein_fasta_file)
 
-    if (
-        args.nucleotide_fasta_file
-        and args.nucleotides_output_file
-        and args.nucleotide_peptides_output_file
-    ):
         extract_ripp_sequences(
             filtered_predictions,
             args.protein_fasta_file,
@@ -283,14 +278,6 @@ def main(args):
             args.nucleotide_fasta_file,
             args.nucleotides_output_file,
             args.nucleotide_peptides_output_file,
-        )
-    else:
-        extract_ripp_sequences(
-            filtered_predictions,
-            args.protein_fasta_file,
-            args.proteins_output_file,
-            args.protein_peptides_output_file,
-            args.predictions_output_file,
         )
 
 

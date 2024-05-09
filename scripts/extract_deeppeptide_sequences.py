@@ -74,7 +74,7 @@ def extract_peptide_sequences(
     """
     protein_sequences = utils.read_fasta(protein_fasta_file)
     nucleotide_sequences = (
-        utils.read_fasta(nucleotide_fasta_file) if nucleotide_fasta_file else None
+        utils.read_fasta(nucleotide_fasta_file) if nucleotide_fasta_file else {}
     )
 
     protein_records = []
@@ -128,8 +128,7 @@ def extract_peptide_sequences(
                         ),
                     )
 
-            # not with the rest of the for loop because don't want repeated multiple times if
-            # multiple peptides per protein/transcript
+            # We add the nucleotide record outside of the for-loop because we don't want to create it multiple times if there are multiple peptides per protein/transcript.
             if nucleotide_sequence and peptides:
                 nucleotide_records.append(
                     SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
@@ -159,13 +158,9 @@ def main(args):
         args.proteins_output_file,
         args.protein_peptides_output_file,
         args.predictions_output_file,
-        nucleotide_fasta_file=args.nucleotide_fasta_file if args.nucleotide_fasta_file else None,
-        nucleotides_output_file=(
-            args.nucleotides_output_file if args.nucleotide_fasta_file else None
-        ),
-        nucleotide_peptides_output_file=(
-            args.nucleotide_peptides_output_file if args.nucleotide_fasta_file else None
-        ),
+        nucleotide_fasta_file=args.nucleotide_fasta_file
+        nucleotides_output_file=args.nucleotides_output_file,
+        nucleotide_peptides_output_file=nucleotide_peptides_output_file,
     )
 
 
