@@ -2,8 +2,10 @@
 ## Input file descriptions
 ################################################################################
 
-# Config parameters in this file are used as defaults by the pipeline (Snakefile).
-# To override the defaults, create a copy of this file and pass your new file to snakemake using the --configfile flag.
+# Config parameters in this file are used as defaults by the pipeline when run in protein-only mode
+# with the snakefile protein_as_input.snakefile.
+# To override the defaults, create a copy of this file and pass your new file to snakemake using the
+# --configfile flag.
 # Any parameters in the new config file will overwrite the defaults listed here.
 
 ###########

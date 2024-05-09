@@ -481,7 +481,7 @@ rule extract_deeppeptide_sequences:
             --nucleotides_output_file {output.parent_ffn} \
             --protein_peptides_output_file {output.peptide_faa} \
             --nucleotide_peptides_output_file {output.peptide_ffn} \
-            --predictions_output_file {output.tsv}            
+            --predictions_output_file {output.tsv} 
         """
 
 

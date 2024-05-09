@@ -155,6 +155,7 @@ def extract_ripp_sequences(
     - predictions_output_file (str): Path to the output TSV file where predictions will be saved.
     - nucleotide_fasta_file (str): The path to a FASTA file containing nucleotide sequences.
       This should include sequences for the same genes as used to make the NLPPrecursor predictions.
+      Optional. 
     - nucleotides_output_file (str): The path to the output file where gene sequences that gave rise
       to predicted peptides will be saved. Each sequence is written in FASTA format with its ID as
       the header. Optional but must be provided if nucleotide_fasta_file is provided.
@@ -170,10 +171,24 @@ def extract_ripp_sequences(
     protein_peptide_records = []
     predictions = []
 
-    if nucleotide_fasta_file and nucleotides_output_file and nucleotide_peptides_output_file:
+    user_did_provide_nucleotide_files = (
+        nucleotide_fasta_file and
+        nucleotides_output_file and
+        nucleotide_peptides_output_file
+    )
+
+    partial_nucleotide_files_provided = any([
+       nucleotide_fasta_file, 
+       nucleotides_output_file, 
+       nucleotide_peptides_output_file
+    ]) and not user_did_provide_nucleotide_files
+
+    if user_did_provide_nucleotide_files:
         nucleotide_sequences = utils.read_fasta(nucleotide_fasta_file)
         nucleotide_records = []
         nucleotide_peptide_records = []
+    elif partial_nucleotide_files_provided:
+        raise ValueError("Error: Partial nucleotide files provided. All or none must be specified.")
 
     for sequence, class_pred, cleavage_pred in filtered_predictions:
         protein_id = sequence["name"]
@@ -217,7 +232,7 @@ def extract_ripp_sequences(
                 )
             )
 
-        if nucleotide_fasta_file and nucleotides_output_file and nucleotide_peptides_output_file:
+        if user_did_provide_nucleotide_files:
             nucleotide_sequence = nucleotide_sequences.get(protein_id)
             # Note that if transdecoder or similar is not used to predict CDS (protein and
             # nucleotide), nucleotide sequences may not have the same ids as protein sequences and
@@ -244,7 +259,7 @@ def extract_ripp_sequences(
 
     SeqIO.write(protein_records, proteins_output_file, "fasta")
     SeqIO.write(protein_peptide_records, protein_peptides_output_file, "fasta")
-    if nucleotide_fasta_file and nucleotides_output_file and nucleotide_peptides_output_file:
+    if user_did_provide_nucleotide_files:
         SeqIO.write(nucleotide_records, nucleotides_output_file, "fasta")
         SeqIO.write(nucleotide_peptide_records, nucleotide_peptides_output_file, "fasta")
 

@@ -87,7 +87,7 @@ def extract_peptide_sequences(
         protein_id = protein_key.split()[0][1:]
         peptides = protein_info.get("peptides")
         protein_sequence = protein_sequences.get(protein_id)
-        nucleotide_sequence = nucleotide_sequences.get(protein_id) if nucleotide_sequences else None
+        nucleotide_sequence = nucleotide_sequences.get(protein_id)
 
         if protein_sequence and peptides:
             protein_records.append(SeqRecord(Seq(protein_sequence), id=protein_id, description=""))
@@ -122,13 +122,19 @@ def extract_peptide_sequences(
                 # sequence.
                 if nucleotide_sequence:
                     nucleotide_peptide_sequence = nucleotide_sequence[(start - 1) * 3 : end * 3]
-                    nucleotide_peptide_records.append(
-                        SeqRecord(
-                            Seq(nucleotide_peptide_sequence), id=peptide_id, description=description
+                    if utils.verify_translation(
+                        nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=True
+                    ):
+                        nucleotide_peptide_records.append(
+                            SeqRecord(
+                                Seq(nucleotide_peptide_sequence),
+                                id=peptide_id,
+                                description=description
                         ),
                     )
 
-            # We add the nucleotide record outside of the for-loop because we don't want to create it multiple times if there are multiple peptides per protein/transcript.
+            # We add the nucleotide record outside of the for-loop because we don't want to create
+            # it multiple times if there are multiple peptides per protein/transcript.
             if nucleotide_sequence and peptides:
                 nucleotide_records.append(
                     SeqRecord(Seq(nucleotide_sequence), id=protein_id, description="")
