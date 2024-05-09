@@ -406,14 +406,14 @@ rule nlpprecursor:
     shell:
         """
         python scripts/run_nlpprecursor.py \
-            {params.modelsdir} \
-            {input.faa} \
-            {input.ffn} \
-            {output.parent_faa} \
-            {output.parent_ffn} \
-            {output.peptide_faa} \
-            {output.peptide_ffn} \
-            {output.tsv}
+            --models_dir {params.modelsdir} \
+            --protein_fasta_file {input.faa} \
+            --proteins_output_file {output.parent_faa} \
+            --protein_peptides_output_file {output.peptide_faa} \
+            --predictions_output_file {output.tsv} \
+            --nucleotide_fasta_file {input.ffn} \
+            --nucleotides_output_file {output.parent_ffn} \
+            --nucleotide_peptides_output_file {output.peptide_ffn}
         """
 
 
@@ -474,14 +474,14 @@ rule extract_deeppeptide_sequences:
     shell:
         """
         python scripts/extract_deeppeptide_sequences.py \
-            {input.json} \
-            {input.faa} \
-            {input.ffn} \
-            {output.parent_faa} \
-            {output.parent_ffn} \
-            {output.peptide_faa} \
-            {output.peptide_ffn} \
-            {output.tsv}
+            --json_file {input.json} \
+            --protein_fasta_file {input.faa} \
+            --nucleotide_fasta_file {input.ffn} \
+            --proteins_output_file {output.parent_faa} \
+            --nucleotides_output_file {output.parent_ffn} \
+            --protein_peptides_output_file {output.peptide_faa} \
+            --nucleotide_peptides_output_file {output.peptide_ffn} \
+            --predictions_output_file {output.tsv} 
         """
 
 

@@ -149,12 +149,12 @@ rule nlpprecursor:
         "envs/nlpprecursor.yml"
     shell:
         """
-        python scripts/run_nlpprecursor_protein_input.py \
-            {params.modelsdir} \
-            {input.faa} \
-            {output.parent_faa} \
-            {output.peptide_faa} \
-            {output.tsv}
+        python scripts/run_nlpprecursor.py \
+            --models_dir {params.modelsdir} \
+            --protein_fasta_file {input.faa} \
+            --proteins_output_file {output.parent_faa} \
+            --protein_peptides_output_file {output.peptide_faa} \
+            --predictions_output_file {output.tsv}
         """
 
 
@@ -211,12 +211,12 @@ rule extract_deeppeptide_sequences:
         "envs/biopython.yml"
     shell:
         """
-        python scripts/extract_deeppeptide_sequences_protein_input.py \
-            {input.json} \
-            {input.faa} \
-            {output.parent_faa} \
-            {output.peptide_faa} \
-            {output.tsv}
+        python scripts/extract_deeppeptide_sequences.py \
+            --json_file {input.json} \
+            --protein_fasta_file {input.faa} \
+            --proteins_output_file {output.parent_faa} \
+            --protein_peptides_output_file {output.peptide_faa} \
+            --predictions_output_file {output.tsv}
         """
 
 
