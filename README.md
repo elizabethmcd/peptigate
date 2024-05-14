@@ -107,9 +107,9 @@ NLPPrecursor predicts the cleavage site as well as the RiPP type (ex. lasso pept
 For both classes, peptides are predicted from input protein sequences.
 Peptigate returns the peptide sequences of predicted peptides and precursor (parent) proteins in amino acid and nucleotide formats. 
 
-**Observations from running the pipeline.**: The NLPPrecursor models that predict RiPP peptides were [trained exclusively on bacterial data](CITE DOI).
-While Eukaryotes have RiPP peptides, it's not clear how similar in structure these RiPP peptides are to those used to train the NLPPrecursor model.
-Even still, we found good support for these peptides in orthogonal experimental evidence (CITE/LINK).
+**Observations from running the pipeline.**: The NLPPrecursor models that predict RiPP peptides were [trained exclusively on bacterial data](https://doi.org/10.1073/pnas.1901493116).
+While [Eukaryotes have RiPP peptides](https://doi.org/10.3390/molecules24081541), it's not clear how similar in structure these RiPP peptides are to those used to train the NLPPrecursor model.
+Even still, we found good support for these peptides in orthogonal experimental evidence.
 We think it's possible that the RiPP peptides detected were once horizontally transferred from bacteria to Eukaryotes, however we have not followed up on this hypothesis.
 
 #### Predicted peptide annotation
