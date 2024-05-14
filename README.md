@@ -27,12 +27,36 @@ snakemake --software-deployment-method conda -j 8
 
 ## Quick start
 
-## Data
+After setting up the Snakemake conda environment, clone the GitHub repository to your computer.
+`cd` into the repository and use the `snakemake` command to run the pipeline on the demo data.
 
-The peptigate pipeline requires four input files:
+```
+git clone https://github.com/Arcadia-Science/peptigate.git
+cd peptigate
+snakemake --software-deployment-method conda -j 1
+```
 
-Only have predicted proteins, perhaps from a genome or from some other source?
+## Input data
 
+The [peptigate pipeline](./Snakefile) requires four input files:
+* Open reading frames in amino acid format: Predicted open reading frames in amino acid format.
+* Open reading frames in nucleotide format: Predicted open reading frames in nucleotide format. These open reading frames should have the same names as those in the amino acid file. Tools like [Transdecoder](https://github.com/TransDecoder/TransDecoder) provide these files in the correct format.
+* Long transcripts/contigs: A transcriptome assembly FASTA file in nucleotide format containing transcripts or contigs.
+* Short transcripts/contigs: contigs that are shorter than X nucleotides. Some transcriptome assemblers discard very short contigs and do not include them in the final assembly. However, some provide them as an intermediate output file. These contigs may contain sORFs and so are included as an input to the peptigate pipeline. If you do not have a file that contains very short contigs, provide a path to an empty file. Very short contigs can also be provided as part of the previous file. If that is the case, provide a path to an empty file for this input file.
+
+The pipeline also requires pointers to three directories:
+* Input directory path: This folder is used by the pipeline to store databases and models.
+* Output directory path: This folder will be created by the snakemake pipeline and will be used to store the output files from the pipeline.
+* Path to directory with plm-utils model: The path to the directory that stores the model for the plm-utils tool. A plm-utils model is provided in this repository.
+
+These inputs are provided to the peptigate pipeline by a config file.
+[`config.yml`](./config.yml) is an example config file, while the [`demo`](./demo) directory contains example input files.
+
+We also included a [workflow](./protein_as_input.snakefile) that can take a single file of protein sequences as input.
+[`config_protein.yml`](./config_protein.yml) is an example config file for this workflow.
+
+Many of the steps in the workflow require models or databases.
+These data are either included in the [`inputs`](./inputs) folder in this repository or are downloaded by the snakemake pipeline itself.
 
 ## Overview
 
@@ -42,15 +66,16 @@ Only have predicted proteins, perhaps from a genome or from some other source?
 
 #### Folders and files in this repository
 
-* [demo](./demo):
-* [envs](./envs):
-* [inputs](./inputs/models):
-* [scripts](./scripts):
-* [LICENSE](./LICENSE): License specifying the re-use terms for the code in this repository.
-* [README.md](./README.md):
-* [Snakefile](./Snakefile):
-* [config.yml](./config.yml):
-* [config_protein.yml](./config_protein.yml)
+* [demo](./demo): Small input files for a demo run of the pipeline. If you're unsure what format your input files need to be in, cross-check against files in the `demo` data folder.
+* [envs](./envs): This repository uses conda to manage software installations and versions. All software required for peptigate use and development is recorded in this folder.
+* [inputs](./inputs/models): Required inputs for the peptigate pipeline. Currently includes the plmutils (sORF prediction) model as well as the pointers to the data used to train this model.
+* [scripts](./scripts): Python and R scripts used by the Snakefiles in this repository.
+* [`LICENSE`](./LICENSE): License specifying the re-use terms for the code in this repository.
+* [`README.md`](./README.md): File outlining the contents of this repository and how to use the peptigate tool.
+* [`Snakefile`](./Snakefile): The snakemake workflow file that orchestrates the full peptigate pipeline. 
+* [`config.yml`](./config.yml): A demo & template config file for the main `Snakefile`.
+* [`protein_as_input.snakefile`](./protein_as_input.snakefile): A simplified version of the peptigate pipeline that only requires a FASTA file of proteins (amino acid format).
+* [`config_protein.yml`](./config_protein.yml): A demo & template config file for the `protein_as_input.snakefile`.
 * [`curate_datasets_and_build_models.snakefile`](./curate_datasets_and_build_models.snakefile): workflow recording how we generated the [plm-utils sORF prediction model](./inputs/models/plmutils/). Because we provide this model in the inputs folder of this repository, we do not anticipate that most users will be interested in running this workflow. 
 * [.github](./.github), [.vscode](./.vscode), [Makefile](./Makefile), [pyproject.toml](./Makefile): Control the developer behavior of the repository. See the [template repository](https://github.com/Arcadia-Science/snakemake-template) for a description of how these files work.
 
@@ -84,7 +109,7 @@ See below for a description of each folder.
 ### Compute Specifications
 
 We ran the pipeline on an AWS EC2 instance type `g4dn.2xlarge` running AMI Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 20.04) 20240122 (AMI ID ami-07eb000b3340966b0).
-The tools plm-utils, DeepPeptide, NLPPrecursor, and AutoPeptideML all rely on a GPU so compute times will be substantially faster (hours vs. days) on a GPU than a CPU.
+The tools plm-utils, DeepPeptide, NLPPrecursor, and AutoPeptideML can use GPUs so compute times will be substantially faster (hours vs. days) on a GPU than a CPU.
 We did not test the pipeline on a CPU so there is a chance it will only work on a GPU.
 
 ## Contributing
