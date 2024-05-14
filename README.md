@@ -50,6 +50,7 @@ Only have predicted proteins, perhaps from a genome or from some other source?
 * [README.md](./README.md):
 * [Snakefile](./Snakefile):
 * [config.yml](./config.yml):
+* [config_protein.yml](./config_protein.yml)
 * [`curate_datasets_and_build_models.snakefile`](./curate_datasets_and_build_models.snakefile): workflow recording how we generated the [plm-utils sORF prediction model](./inputs/models/plmutils/). Because we provide this model in the inputs folder of this repository, we do not anticipate that most users will be interested in running this workflow. 
 * [.github](./.github), [.vscode](./.vscode), [Makefile](./Makefile), [pyproject.toml](./Makefile): Control the developer behavior of the repository. See the [template repository](https://github.com/Arcadia-Science/snakemake-template) for a description of how these files work.
 
