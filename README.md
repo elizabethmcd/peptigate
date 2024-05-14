@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Peptigate investigates transcriptomes for peptides.
+Peptigate investigates transcriptomes to predict bioactive peptides.
 It predicts peptides (small open reading frames, cleavage peptides, and ribosomally translated and post-translationally modified) and then annotates them.
 
 ## Installation and Setup
@@ -27,7 +27,7 @@ snakemake --software-deployment-method conda -j 8
 
 ## Quick start
 
-After setting up the Snakemake conda environment, clone the GitHub repository to your computer.
+After setting up the peptigate conda environment, clone the peptigate GitHub repository to your computer.
 `cd` into the repository and use the `snakemake` command to run the pipeline on the demo data.
 
 ```
@@ -90,7 +90,7 @@ Peptigate returns the peptide sequences of predicted peptides in amino acid and 
 The peptigate will detect sORFs encoded in the 5' or 3' UTR of the longer canonical ORF if the canonical ORF was not annotated because it is part of a fragmented contig.
 We implemented a filtering step to try and catch some of these cases but this is a tricky problem for which we don't have a great solution.
 If this is your situation, two tricks that might prove useful to filter predictions down to the most likely functional peptides are to:
-1. Search for sORF predictions with both chain and signal peptides annotated. If a peptide has both, it may be more likely to be targetted to a specific location, potentially indicating that is is more likely to be functional.
+1. Search for sORF predictions with both chain and signal peptides annotated. If a peptide has both, it may be more likely to be targeted to a specific location, potentially indicating that is is more likely to be functional.
 2. Filter to sORF predictions that have hits against the peptipedia database. This will limit to peptide predictions that are homologous to peptides that have been discovered before. 
 
 #### Cleavage peptide prediction
