@@ -60,7 +60,42 @@ These data are either included in the [`inputs`](./inputs) folder in this reposi
 
 ## Overview
 
+Peptigate is a workflow that predicts bioactive peptides from transcriptome assemblies and annotates those predictions.
+This Snakemake-based pipeline integrates tools to identify small open reading frames (sORFs) and cleavage peptides.
+Each peptide prediction is then annotated to provide clues as to the bioactivity or function of the peptide.
+
 ### Description of how the tool works
+
+Peptigate is broken into three sections.
+
+#### Small open reading frame (sORF) prediction
+
+**Background** Small open reading frames are peptides that are ["born small"](https://doi.org/10.1111/febs.15769) --
+they are less than 100 amino acids but are otherwise like longer proteins in that they are synthesized via DNA transcription and ribosomal translation.
+Many tools that predict open reading frames (ORFs) in transcripts have decreased accuracy at shorter lengths and by default do not output predictions shorter than 100 amino acids.
+Yet, some sORFs produce functional proteins, leading to a systematic underappreciation in the detection and biological role of these proteins.
+Techniques like ribosomal profiling and peptidomics mass spectrometry have highlighted that ubiquity of these proteins as well as some of their biological roles [https://doi.org/10.3389/fgene.2021.796060].
+Many sORFs are located upstream or downstream of canonical long ORFs and play a regulatory role by influencing translation [https://doi.org/10.3389/fgene.2021.796060].
+Other sORFs are encode functional peptides [https://doi.org/10.3389/fgene.2021.796060; https://doi.org/10.1021/pr401280w].
+
+**What the pipeline does** The peptigate pipeline targets stand-alone sORFs with the goal of identifying functional peptides.
+Peptigate begins sORF prediction by removing transcripts that had predicted ORFs.
+It then uses the [`plm-utils`](https://github.com/Arcadia-Science/2024-plm-utils) tool to predict open reading frames from the rest of the transcripts.
+plm-utils uses the start codons [TTG, CTG, ATG, GTG, ACG](https://doi.org/10.3389/fgene.2021.796060) and traditional stop codons for ORF prediction as sORFs frequently use non-canonical start sites.
+If a predicted ORF is shorter than 301 nucleotides, it then predicts whether the ORF is coding or not using a model trained on [ESM embeddings](https://github.com/facebookresearch/esm).
+We think these embeddings capture information about the secondary structure of proteins; large protein language models have [previously been shown](https://doi.org/10.1016/j.str.2022.11.012) to have high accuracy on structural predictions for some peptides. 
+Peptigate returns the peptide sequences of predicted peptides in amino acid and nucleotide format.
+
+**Observations from running the pipeline**: Because many valid sORFs are co-encoded on transcripts with longer ORFs, peptigate will over-predict functional sORFs when fragmented transcripts are supplied to the pipeline.
+The peptigate will detect sORFs encoded in the 5' or 3' UTR of the longer canonical ORF if the canonical ORF was not annotated because it is part of a fragmented contig.
+We implemented a filtering step to try and catch some of these cases but this is a tricky problem for which we don't have a great solution.
+If this is your situation, two tricks that might prove useful to filter predictions down to the most likely functional peptides are to:
+1. Search for sORF predictions with both chain and signal peptides annotated. If a peptide has both, it may be more likely to be targetted to a specific location, potentially indicating that is is more likely to be functional.
+2. Filter to sORF predictions that have hits against the peptipedia database. This will limit to peptide predictions that are homologous to peptides that have been discovered before. 
+
+#### Cleavage peptide prediction
+
+#### Predicted peptide annotation
 
 ### Description of the folder structure and files
 
