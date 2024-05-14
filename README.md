@@ -114,6 +114,10 @@ We think it's possible that the RiPP peptides detected were once horizontally tr
 
 #### Predicted peptide annotation
 
+**What the pipeline does.** The peptigate pipeline uses multiple approaches to get clues as to the function of the predicted peptides.
+For all predicted peptides, it predicts wether the peptide contains a [signal peptide](https://en.wikipedia.org/wiki/Signal_peptide) using [DeepSig](https://academic.oup.com/bioinformatics/article/34/10/1690/4769493), compares the peptide against known peptides in the [Peptipedia database](https://app.peptipedia.cl/), and performs functional annotation against 16 pre-trained models using [AutoPeptideML](https://www.biorxiv.org/content/10.1101/2023.11.13.566825v3).
+For cleavage peptides, peptigate also performs ortholog annotation on the precursor protein using [KoFamScan](https://doi.org/10.1093/bioinformatics/btz859).
+
 ### Description of the folder structure and files
 
 #### Folders and files in this repository
