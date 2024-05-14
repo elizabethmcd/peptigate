@@ -74,9 +74,9 @@ Peptigate is broken into three sections.
 they are less than 100 amino acids but are otherwise like longer proteins in that they are synthesized via DNA transcription and ribosomal translation.
 Many tools that predict open reading frames (ORFs) in transcripts have decreased accuracy at shorter lengths and by default do not output predictions shorter than 100 amino acids.
 Yet, some sORFs produce functional proteins, leading to a systematic underappreciation in the detection and biological role of these proteins.
-Techniques like ribosomal profiling and peptidomics mass spectrometry have highlighted that ubiquity of these proteins as well as some of their biological roles [https://doi.org/10.3389/fgene.2021.796060].
-Many sORFs are located upstream or downstream of canonical long ORFs and play a regulatory role by influencing translation [https://doi.org/10.3389/fgene.2021.796060].
-Other sORFs are encode functional peptides [https://doi.org/10.3389/fgene.2021.796060; https://doi.org/10.1021/pr401280w].
+Techniques like [ribosomal profiling and peptidomics mass spectrometry](https://doi.org/10.3389/fgene.2021.796060) have highlighted that ubiquity of these proteins as well as some of their biological roles.
+Many sORFs are located upstream or downstream of canonical long ORFs and play a [regulatory role by influencing translation](https://doi.org/10.3389/fgene.2021.796060).
+Other sORFs encode [functional](https://doi.org/10.1021/pr401280w) [peptides](https://doi.org/10.3389/fgene.2021.796060).
 
 **What the pipeline does.** The peptigate pipeline targets stand-alone sORFs with the goal of identifying functional peptides.
 Peptigate begins sORF prediction by removing transcripts that had predicted ORFs.
