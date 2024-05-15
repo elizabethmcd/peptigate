@@ -44,8 +44,8 @@ The [peptigate pipeline](./Snakefile) requires four input files:
 * Long transcripts/contigs: A transcriptome assembly FASTA file in nucleotide format containing transcripts or contigs.
 * Short transcripts/contigs: contigs that are shorter than X nucleotides. Some transcriptome assemblers discard very short contigs and do not include them in the final assembly. However, some provide them as an intermediate output file. These contigs may contain sORFs and so are included as an input to the peptigate pipeline. If you do not have a file that contains very short contigs, provide a path to an empty file. Very short contigs can also be provided as part of the previous file. If that is the case, provide a path to an empty file for this input file.
 
-The pipeline also requires pointers to three directories:
-* Input directory path: This folder is used by the pipeline to store databases and models.
+The pipeline also requires paths to three directories:
+* Input directory path: This folder is used by the pipeline to store databases and models downloaded by the pipeline from external sources.
 * Output directory path: This folder will be created by the snakemake pipeline and will be used to store the output files from the pipeline.
 * Path to directory with plm-utils model: The path to the directory that stores the model for the plm-utils tool. A plm-utils model is provided in this repository.
 
@@ -55,7 +55,7 @@ These inputs are provided to the peptigate pipeline by a config file.
 We also included a [workflow](./protein_as_input.snakefile) that can take a single file of protein sequences as input.
 [`config_protein.yml`](./config_protein.yml) is an example config file for this workflow.
 
-Many of the steps in the workflow require models or databases.
+Many of the steps in the workflow require models or databases from external sources.
 These data are either included in the [`inputs`](./inputs) folder in this repository or are downloaded by the snakemake pipeline itself.
 
 ## Overview
@@ -66,7 +66,7 @@ Each peptide prediction is then annotated to provide clues as to the bioactivity
 
 ### Description of how the tool works
 
-Peptigate is broken into three sections.
+The peptigate pipeline is organized into three sections.
 
 #### Small open reading frame (sORF) prediction
 
@@ -74,24 +74,24 @@ Peptigate is broken into three sections.
 they are less than 100 amino acids but are otherwise like longer proteins in that they are synthesized via DNA transcription and ribosomal translation.
 Many tools that predict open reading frames (ORFs) in transcripts have decreased accuracy at shorter lengths and by default do not output predictions shorter than 100 amino acids.
 Yet, some sORFs produce functional proteins, leading to a systematic underappreciation in the detection and biological role of these proteins.
-Techniques like [ribosomal profiling and peptidomics mass spectrometry](https://doi.org/10.3389/fgene.2021.796060) have highlighted that ubiquity of these proteins as well as some of their biological roles.
+Techniques like [ribosomal profiling and peptidomics mass spectrometry](https://doi.org/10.3389/fgene.2021.796060) have highlighted the ubiquity of these proteins as well as some of their biological roles.
 Many sORFs are located upstream or downstream of canonical long ORFs and play a [regulatory role by influencing translation](https://doi.org/10.3389/fgene.2021.796060).
 Other sORFs encode [functional](https://doi.org/10.1021/pr401280w) [peptides](https://doi.org/10.3389/fgene.2021.796060).
 
 **What the pipeline does.** The peptigate pipeline targets stand-alone sORFs with the goal of identifying functional peptides.
 Peptigate begins sORF prediction by removing transcripts that had predicted ORFs.
 It then uses the [`plm-utils`](https://github.com/Arcadia-Science/2024-plm-utils) tool to predict open reading frames from the rest of the transcripts.
-plm-utils uses the start codons [TTG, CTG, ATG, GTG, ACG](https://doi.org/10.3389/fgene.2021.796060) and traditional stop codons for ORF prediction as sORFs frequently use non-canonical start sites.
+`plm-utils` uses canonical and non-canonical start codons (TTG, CTG, ATG, GTG, ACG) with traditional stop codons for ORF prediction as [sORFs frequently use non-canonical start sites](https://doi.org/10.3389/fgene.2021.796060).
 If a predicted ORF is shorter than 301 nucleotides, it then predicts whether the ORF is coding or not using a model trained on [ESM embeddings](https://github.com/facebookresearch/esm).
 We think these embeddings capture information about the secondary structure of proteins; large protein language models have [previously been shown](https://doi.org/10.1016/j.str.2022.11.012) to have high accuracy on structural predictions for some peptides. 
-Peptigate returns the peptide sequences of predicted peptides in amino acid and nucleotide format.
+Peptigate returns the peptide sequences of predicted sORFs in amino acid and nucleotide format.
 
 **Observations from running the pipeline.** Because many valid sORFs are co-encoded on transcripts with longer ORFs, peptigate will over-predict functional sORFs when fragmented transcripts are supplied to the pipeline.
-The peptigate will detect sORFs encoded in the 5' or 3' UTR of the longer canonical ORF if the canonical ORF was not annotated because it is part of a fragmented contig.
+This is because peptigate will detect sORFs encoded in the 5' or 3' UTR of a longer canonical ORF if the canonical ORF was not annotated because it is part of a fragmented contig.
 We implemented a filtering step to try and catch some of these cases but this is a tricky problem for which we don't have a great solution.
 If this is your situation, two tricks that might prove useful to filter predictions down to the most likely functional peptides are to:
 1. Search for sORF predictions with both chain and signal peptides annotated. If a peptide has both, it may be more likely to be targeted to a specific location, potentially indicating that is is more likely to be functional.
-2. Filter to sORF predictions that have hits against the peptipedia database. This will limit to peptide predictions that are homologous to peptides that have been discovered before. 
+2. Filter to sORF predictions that have hits against the peptipedia database. This will limit the predicted sORFs to those that are homologous to peptides that have been discovered before. 
 
 #### Cleavage peptide prediction
 
@@ -103,14 +103,14 @@ Examples include [preproglucagon](https://doi.org/10.1152/ajpendo.00152.2022), a
 For traditional cleavage peptides, peptigate runs the [DeepPeptide](https://doi.org/10.1093/bioinformatics/btad616) tool.
 DeepPeptide predicts the presence of both cleavage peptides and propeptides, where peptides are thought to be biologically active once cleaved and [propeptides are not](https://www.uniprot.org/help/propep).
 For RiPP peptides, peptigate runs the [NLPPrecursor](https://github.com/magarveylab/NLPPrecursor) tool.
-NLPPrecursor predicts the cleavage site as well as the RiPP type (ex. lasso peptide).
+NLPPrecursor predicts the cleavage site as well as the RiPP type (for example, "lasso" peptides).
 For both classes, peptides are predicted from input protein sequences.
 Peptigate returns the peptide sequences of predicted peptides and precursor (parent) proteins in amino acid and nucleotide formats. 
 
-**Observations from running the pipeline.**: The NLPPrecursor models that predict RiPP peptides were [trained exclusively on bacterial data](https://doi.org/10.1073/pnas.1901493116).
+**Observations from running the pipeline.** The NLPPrecursor models that predict RiPP peptides were [trained exclusively on bacterial data](https://doi.org/10.1073/pnas.1901493116).
 While [Eukaryotes have RiPP peptides](https://doi.org/10.3390/molecules24081541), it's not clear how similar in structure these RiPP peptides are to those used to train the NLPPrecursor model.
 Even still, we found good support for these peptides in orthogonal experimental evidence.
-We think it's possible that the RiPP peptides detected were once horizontally transferred from bacteria to Eukaryotes, however we have not followed up on this hypothesis.
+We think it's possible that the RiPP peptides detected were once horizontally transferred from bacteria to Eukaryotes; however, we have not followed up on this hypothesis.
 
 #### Predicted peptide annotation
 
@@ -132,22 +132,22 @@ For cleavage peptides, peptigate also performs ortholog annotation on the precur
 * [`config.yml`](./config.yml): A demo & template config file for the main `Snakefile`.
 * [`protein_as_input.snakefile`](./protein_as_input.snakefile): A simplified version of the peptigate pipeline that only requires a FASTA file of proteins (amino acid format).
 * [`config_protein.yml`](./config_protein.yml): A demo & template config file for the `protein_as_input.snakefile`.
-* [`curate_datasets_and_build_models.snakefile`](./curate_datasets_and_build_models.snakefile): workflow recording how we generated the [plm-utils sORF prediction model](./inputs/models/plmutils/). Because we provide this model in the inputs folder of this repository, we do not anticipate that most users will be interested in running this workflow. 
+* [`curate_datasets_and_build_models.snakefile`](./curate_datasets_and_build_models.snakefile): A Snakemake workflow that records how we generated the [plm-utils sORF prediction model](./inputs/models/plmutils/). Because we provide this model in the inputs folder of this repository, we do not anticipate that most users will be interested in running this workflow. 
 * [.github](./.github), [.vscode](./.vscode), [Makefile](./Makefile), [pyproject.toml](./Makefile): Control the developer behavior of the repository. See the [template repository](https://github.com/Arcadia-Science/snakemake-template) for a description of how these files work.
 
 #### Folders and files output by the workflow
 
-All predicted peptide sequences and annotation information are reported in the `predictions` folder.
+All predicted peptide sequences and annotation information are reported in the `predictions/` subfolder of the output folder specified in `config.yml`.
 Other folders record intermediate files needed to make the final prediction files.
 See below for a description of each folder.
  
-* annotation
+* `annotation/`
     * autopeptideml: intermediate files recording bioacitivty predictions made by AutoPeptideML models.
     * characteristics: intermediate files recording chemical characteristics of predicted peptides calculated by the Python package peptides.
     * deepsig: intermediate files recording signal peptide predictions for the predicted peptides calculated by DeepSig.
     * peptipedia: intermediate files record BLASTp matches against the Peptipedia database using diamond.
 * cleavage
-    * deeppeptide: intermediate files and cleavage peptide predictions made by DeepPeptide
+    * deeppeptide: intermediate files and cleavage peptide predictions made by DeepPeptide.
     * nlpprecursor: intermediate files and cleavage peptide predictions made by NLPPrecursor.
     * preprocessing: intermediate files formatted in preparation for cleavage peptide prediction.
 * predictions: combined peptide predictions and annotations.
@@ -160,7 +160,7 @@ See below for a description of each folder.
 * sORF: intermediate files related to sORF prediction from non-coding nucleotide contigs supplied as input to the pipeline.
     * contigs: contains processed contiguous sequences that are filtered before sORF prediction.
     * filtering: a BLAST filter designed to remove fragmented contiguous sequences that contain fragmented coding sequences (canonical genes longer than 100 amino acids).
-    * plmutils: intermediate files and sORF prediction via the tool plm-utils.
+    * plmutils: intermediate files and sORF predictions from the tool `plm-utils`.
 
 ### Compute Specifications
 
