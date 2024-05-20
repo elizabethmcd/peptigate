@@ -25,4 +25,4 @@ jobs:
         with:
           directory: .
           snakefile: ./Snakefile
-          args: "--software-deployment-method conda --show-failed-logs -n"
+          args: "--software-deployment-method conda --show-failed-logs --configfile demo/config.yml -n"

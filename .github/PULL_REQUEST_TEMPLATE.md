@@ -1,7 +1,5 @@
 <!--
-# TODO: Fill the name of the repo Arcadia-Science/<NAME> pull request
-
-Many thanks for contributing to Arcadia-Science/<NAME>!
+Many thanks for contributing to Arcadia-Science/peptigate!
 
 Please fill in the appropriate checklist below (delete whatever is not relevant).
 These are the most common things requested on pull requests (PRs).
