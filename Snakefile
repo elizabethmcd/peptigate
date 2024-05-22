@@ -653,23 +653,18 @@ AUTOPEPTIDEML_MODEL_NAMES = [
     "TTCA",
 ]
 
-
 rule download_autopeptideml_models:
     output:
-        # TER TODO: the authors of autopeptideml sent me these models.
-        # They said they're working on uploading them.
-        # Once they're available, I need to add a rule to download them and update the input here
-        # to be the rules syntax
-        # https://github.com/IBM/AutoPeptideML/issues/6#issuecomment-1989494559
-        model=INPUT_DIR
-        / "models"
-        / "autopeptideml"
-        / "HPO_NegSearch_HP"
-        / "{autopeptideml_model_name}_1"
-        / "apml_config.json",
+        archive=INPUT_DIR / "models" / "autopeptideml.tar.gz",
+        model=expand(
+            INPUT_DIR / "models" / "autopeptideml" / "{autopeptideml_model_name}_1" / "apml_config.json",
+            autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
+        ),
+    params:
+        outdir=INPUT_DIR / "models"
     shell:
         """
-        touch {output} # will become a curl command or something, depending on how models are packaged
+        curl -JLo {output.archive} https://osf.io/94y83/download && tar xf {output.archive} -C {params.outdir}
         """
 
 
@@ -697,7 +692,7 @@ rule run_autopeptideml:
         / "autopeptideml"
         / "autopeptideml_{autopeptideml_model_name}.tsv",
     params:
-        modelsdir=INPUT_DIR / "models" / "autopeptideml" / "HPO_NegSearch_HP/",
+        modelsdir=INPUT_DIR / "models" / "autopeptideml",
     conda:
         "envs/autopeptideml.yml"
     shell:
