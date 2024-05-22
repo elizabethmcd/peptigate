@@ -2,7 +2,6 @@ library(tidyverse)
 source("scripts/parse_sequence_information.R")
 
 files <- unlist(snakemake@input)
-#files <- Sys.glob("outputs/models/rnasamba/build/2_sequence_sets/*.fa.seqkit.fai")
 fai_col_names <- c("sequence", "length", "offset", "linebases", "linewidth")
 fai <- files %>%
   set_names() %>%

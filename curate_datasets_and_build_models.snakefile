@@ -12,7 +12,7 @@ VALIDATION_TYPES = [
 # Note that for variables CODING_TYPES and DATASET_TYPES, the order matters;
 # The snakemake expand() function maintains the order of these arguments.
 # This behavior is used later in the snakefile to specify inputs and outputs of different scripts/shell commands.
-# The order of CODING_TYPES must correspond to the order of the positional args that are later passed to rnasamba.
+# The order of CODING_TYPES must correspond to the order of the positional args that are later passed to plm-utils.
 # In addition, the order of CODING_TYPES and DATASET_TYPES is used to declare outputs in the rule/R script process_sequences_into_nonoverlapping_sets.
 CODING_TYPES = ["coding", "noncoding"]
 DATASET_TYPES = ["train", "validation"]
