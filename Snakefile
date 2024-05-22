@@ -653,15 +653,20 @@ AUTOPEPTIDEML_MODEL_NAMES = [
     "TTCA",
 ]
 
+
 rule download_autopeptideml_models:
     output:
         archive=INPUT_DIR / "models" / "autopeptideml.tar.gz",
         model=expand(
-            INPUT_DIR / "models" / "autopeptideml" / "{autopeptideml_model_name}_1" / "apml_config.json",
-            autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES
+            INPUT_DIR
+            / "models"
+            / "autopeptideml"
+            / "{autopeptideml_model_name}_1"
+            / "apml_config.json",
+            autopeptideml_model_name=AUTOPEPTIDEML_MODEL_NAMES,
         ),
     params:
-        outdir=INPUT_DIR / "models"
+        outdir=INPUT_DIR / "models",
     shell:
         """
         curl -JLo {output.archive} https://osf.io/94y83/download && tar xf {output.archive} -C {params.outdir}
