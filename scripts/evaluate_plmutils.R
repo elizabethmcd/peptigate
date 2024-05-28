@@ -5,16 +5,16 @@ library(Biostrings)
 # set up parsing ----------------------------------------------------------
 
 option_list <- list(
-  make_option(c("--coding-fasta-file"), type = "character",
+  make_option(c("--coding_fasta_file"), type = "character",
               help = "Path to the coding sequences FASTA file"),
-  make_option(c("--coding-prediction-file"), type = "character",
+  make_option(c("--coding_prediction_file"), type = "character",
               help = "Path to the coding prediction CSV file"),
-  make_option(c("--noncoding-fasta-file"), type = "character",
+  make_option(c("--noncoding_fasta_file"), type = "character",
               help = "Path to the noncoding sequences FASTA file"),
-  make_option(c("--noncoding-prediction-file"), type = "character",
+  make_option(c("--noncoding_prediction_file"), type = "character",
               help = "Path to the noncoding prediction CSV file"),
-  make_option(c("--output-file"), type = "character",
-              help = "Path to save the output results", default = "output.tsv")
+  make_option(c("--output_file"), type = "character",
+              help = "Path to save the output results")
 )
 
 parser <- OptionParser(option_list = option_list)
@@ -46,10 +46,15 @@ calculate_f_score <- function(TP, FP, FN) {
 }
 
 calculate_mcc <- function(TP, TN, FP, FN) {
-  numerator <- TP * TN - FP * FN
+  # converts to numeric from integer to avoid integer overflow
+  TP <- as.numeric(TP)
+  TN <- as.numeric(TN)
+  FP <- as.numeric(FP)
+  FN <- as.numeric(FN)
+  numerator <- (TP * TN) - (FP * FN)
   denominator <- sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
-  if (denominator == 0) return(0)
-  numerator / denominator
+  mcc <- numerator / denominator
+  return(mcc)
 }
 
 # read in data ------------------------------------------------------------
@@ -86,10 +91,6 @@ TP <- summary_results %>%
 TN <- summary_results %>%
   filter(predicted_label == "negative", predicted == "noncoding", actual == "noncoding") %>%
   pull(n)
-# account for the transcripts that are actually noncoding but were dropped by plmutils bc of no predicted ORF
-if(!all.equal((TN + FP), noncoding_before_plmutils_translate)){
-  TN <- TN + (noncoding_before_plmutils_translate - noncoding_after_plmutils_translate) 
-}
 
 # noncoding as coding
 FP <- summary_results %>%
@@ -100,9 +101,15 @@ FP <- summary_results %>%
 FN <- summary_results %>%
   filter(predicted_label == "negative", predicted == "noncoding", actual == "coding") %>%
   pull(n)
+
 # account for the transcripts that are actually coding but were dropped by plmutils bc of no predicted ORF
-if(!all.equal((FN + TP), coding_before_plmutils_translate)){
+if(!isTRUE(all.equal((FN + TP), coding_before_plmutils_translate))){
   FN <- FN + (coding_before_plmutils_translate - coding_after_plmutils_translate) 
+}
+
+# account for the transcripts that are actually noncoding but were dropped by plmutils bc of no predicted ORF
+if(!isTRUE(all.equal((TN + FP), noncoding_before_plmutils_translate))){
+  TN <- TN + (noncoding_before_plmutils_translate - noncoding_after_plmutils_translate) 
 }
 
 # calculate performance ---------------------------------------------------

@@ -21,14 +21,8 @@ DATASET_TYPES = ["train", "validation"]
 rule all:
     input:
         "outputs/models/datasets/3_stats/set_summary.tsv",
-        expand(
-            "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
-            coding_type=CODING_TYPES,
-        ),
-        expand(
-            "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_predictions.csv",
-            validation_type=VALIDATION_TYPES,
-        )
+        "outputs/models/build/plmutils/4_rnachallenge/performance.tsv",
+        "outputs/models/build/plmutils/3_predict/validation_performance.tsv"
 
 
 rule download_ensembl_data:
@@ -289,6 +283,23 @@ rule plmutils_predict_on_validation:
             --output-filepath {output}
         """
 
+rule evaluate_plmutils_on_validation:
+    input:
+        prediction=expand("outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv", coding_type = CODING_TYPES),
+        fasta=expand("outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa", coding_type = CODING_TYPES)
+    output: "outputs/models/build/plmutils/3_predict/validation_performance.tsv"
+    conda: "envs/tidy_biostrings.yml"
+    shell:
+        """
+        Rscript scripts/evaluate_plmutils.R \
+            --coding_fasta_file {input.fasta[0]} \
+            --coding_prediction_file {input.prediction[0]} \
+            --noncoding_fasta_file {input.fasta[1]} \
+            --noncoding_prediction_file {input.prediction[1]} \
+            --output_file {output}
+        """
+##################################################################
+## Get sequence statistics
 ##################################################################
 ## Run plmutils directly on RNAchallenge
 ##################################################################
@@ -346,15 +357,20 @@ rule plmutils_predict_on_rnachallenge:
             --output-filepath {output}
         """
 
-rule evaluate_plmutils:
+rule evaluate_plmutils_rnachallenge:
     input:
-        "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_predictions.csv",
-        "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa"
-    output:
-    conda: "envs/"
+        prediction=expand("outputs/models/build/plmutils/4_rnachallenge/{validation_type}_predictions.csv", validation_type = VALIDATION_TYPES),
+        fasta=expand("inputs/models/datasets/validation/rnachallenge/{validation_type}.fa", validation_type = VALIDATION_TYPES)
+    output: "outputs/models/build/plmutils/4_rnachallenge/performance.tsv"
+    conda: "envs/tidy_biostrings.yml"
     shell:
         """
-        scripts/evaluate_plmutils.R 
+        Rscript scripts/evaluate_plmutils.R \
+            --coding_fasta_file {input.fasta[0]} \
+            --coding_prediction_file {input.prediction[0]} \
+            --noncoding_fasta_file {input.fasta[1]} \
+            --noncoding_prediction_file {input.prediction[1]} \
+            --output_file {output}
         """
 ##################################################################
 ## Get sequence statistics
@@ -372,7 +388,6 @@ rule get_sequence_descriptors:
         """
         seqkit faidx -f {input}
         """
-
 
 rule calculate_sequence_statistics:
     input:
