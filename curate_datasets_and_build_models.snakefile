@@ -21,10 +21,8 @@ DATASET_TYPES = ["train", "validation"]
 rule all:
     input:
         "outputs/models/datasets/3_stats/set_summary.tsv",
-        expand(
-            "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
-            coding_type=CODING_TYPES,
-        ),
+        "outputs/models/build/plmutils/4_rnachallenge/performance.tsv",
+        "outputs/models/build/plmutils/3_predict/validation_performance.tsv",
 
 
 rule download_ensembl_data:
@@ -283,6 +281,115 @@ rule plmutils_predict_on_validation:
             --embeddings-filepath {input.embeddings} \
             --fasta-filepath {input.fasta} \
             --output-filepath {output}
+        """
+
+
+rule evaluate_plmutils_on_validation:
+    input:
+        prediction=expand(
+            "outputs/models/build/plmutils/3_predict/{coding_type}_validation_predictions.csv",
+            coding_type=CODING_TYPES,
+        ),
+        fasta=expand(
+            "outputs/models/build/plmutils/0_translate/{coding_type}_validation.fa",
+            coding_type=CODING_TYPES,
+        ),
+    output:
+        "outputs/models/build/plmutils/3_predict/validation_performance.tsv",
+    conda:
+        "envs/tidy_biostrings.yml"
+    shell:
+        """
+        Rscript scripts/evaluate_plmutils.R \
+            --coding_fasta_file {input.fasta[0]} \
+            --coding_prediction_file {input.prediction[0]} \
+            --noncoding_fasta_file {input.fasta[1]} \
+            --noncoding_prediction_file {input.prediction[1]} \
+            --output_file {output}
+        """
+
+
+##################################################################
+## Run plmutils directly on RNAchallenge
+##################################################################
+"""
+Above, we reduced homology between our input data and our validation set to make a better accuracy
+estimate. However, this doesn't allow us to compare against the other tools benchmarked on the
+RNAChallenge data set directly, because many of these tools will also have pollution between the data used
+to train their models and the sequences in the RNAChallenge validation set. Below, we use the plmutils
+model we trained above to generate predictions for the full original RNAChallenge data set. The performance metrics from these predictions can be used to directly compare the plmutils model to other tools.
+"""
+
+
+rule plmutils_translate_rnachallenge:
+    input:
+        "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa",
+    output:
+        "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_translated.fa",
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils translate --longest-only --output-filepath {output} {input}
+        """
+
+
+rule plmutils_embed_rnachallenge:
+    input:
+        "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_translated.fa",
+    output:
+        "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_embedded.npy",
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils embed --model-name esm2_t6_8M_UR50D \
+            --layer-ind -1 \
+            --output-filepath {output} \
+            {input}
+        """
+
+
+rule plmutils_predict_on_rnachallenge:
+    input:
+        embeddings="outputs/models/build/plmutils/4_rnachallenge/{validation_type}_embedded.npy",
+        fasta="outputs/models/build/plmutils/4_rnachallenge/{validation_type}_translated.fa",
+        model=rules.plmutils_train.output,
+    output:
+        "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_predictions.csv",
+    conda:
+        "envs/plmutils.yml"
+    shell:
+        """
+        plmutils predict --model-dirpath {input.model} \
+            --embeddings-filepath {input.embeddings} \
+            --fasta-filepath {input.fasta} \
+            --output-filepath {output}
+        """
+
+
+rule evaluate_plmutils_rnachallenge:
+    input:
+        prediction=expand(
+            "outputs/models/build/plmutils/4_rnachallenge/{validation_type}_predictions.csv",
+            validation_type=VALIDATION_TYPES,
+        ),
+        fasta=expand(
+            "inputs/models/datasets/validation/rnachallenge/{validation_type}.fa",
+            validation_type=VALIDATION_TYPES,
+        ),
+    output:
+        "outputs/models/build/plmutils/4_rnachallenge/performance.tsv",
+    conda:
+        "envs/tidy_biostrings.yml"
+    shell:
+        """
+        Rscript scripts/evaluate_plmutils.R \
+            --coding_fasta_file {input.fasta[0]} \
+            --coding_prediction_file {input.prediction[0]} \
+            --noncoding_fasta_file {input.fasta[1]} \
+            --noncoding_prediction_file {input.prediction[1]} \
+            --output_file {output}
         """
 
 
