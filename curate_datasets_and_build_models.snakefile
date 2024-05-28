@@ -315,9 +315,9 @@ rule evaluate_plmutils_on_validation:
 """
 Above, we reduced homology between our input data and our validation set to make a better accuracy
 estimate. However, this doesn't allow us to compare against the other tools benchmarked on the
-RNAChallenge data set directly. Many of these tools will also have pollution between the data used
-to train their models and the sequences in the RNAChallenge validation set. Below, we run plmutils
-on the RNAChallenge data set directly to allow a direct comparison.
+RNAChallenge data set directly, because many of these tools will also have pollution between the data used
+to train their models and the sequences in the RNAChallenge validation set. Below, we use the plmutils
+model we trained above to generate predictions for the full original RNAChallenge data set. The performance metrics from these predictions can be used to directly compare the plmutils model to other tools.
 """
 
 
