@@ -308,9 +308,6 @@ rule evaluate_plmutils_on_validation:
             --output_file {output}
         """
 
-
-##################################################################
-## Get sequence statistics
 ##################################################################
 ## Run plmutils directly on RNAchallenge
 ##################################################################
