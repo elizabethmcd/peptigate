@@ -35,7 +35,7 @@ snakemake --software-deployment-method conda -j 1 --configfile demo/config.yml
 ## Input data
 
 The [peptigate pipeline](./Snakefile) requires three input files:
-* A transcriptome assembly: transcriptome assembly FASTA file in nucleotide format containing transcripts or contigs.
+* A transcriptome assembly as a FASTA file in nucleotide format containing transcripts or contigs.
 * Open reading frames predicted from the transcriptome in both amino acid and nucleotide format.
   The open reading frames in both files should have the same names before the first period in the FASTA header name.
   Tools like [TransDecoder](https://github.com/TransDecoder/TransDecoder) provide these files in the correct format.

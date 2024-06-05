@@ -20,7 +20,7 @@ output_dir: "path/to/outputdir"
 #   ORFs should be predicted from the same transcriptome assembly as the "contigs" input file.
 #   ORFs should have the same name (before the first period in the name) as the contigs in the
 #   "contigs" input file. TransDecoder provides files in the proper format.
-#   Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases, and to
+#   This file is used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases, and to
 #   remove coding transcripts from the transcriptome assembly before sORF prediction.
 # - orfs_nucleotides: predicted ORFs as nucleotide sequences. Should contain the same ORFs as
 #   "orfs_amino_acids" but in nucleotide format. TransDecoder also provides this file in the proper
