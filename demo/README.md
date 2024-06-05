@@ -9,4 +9,4 @@ head -n 204 orthofuser_final_clean.fa.transdecoder.cds > orfs_nucleotides.fa
 ```
 
 We also pulled short contigs (less than 75 bp) from an internal S3 bucket and added these contigs to the `contigs.fa` file (50 contigs).
-These are contigs that were filtered from the *Amblyomma* transcriptome prior to transcriptome merging (mid assembly pipeline).
+These are contigs that were filtered from the *Amblyomma* transcriptome prior to transcriptome merging during the [transcriptome assembly pipeline](https://github.com/Arcadia-Science/2023-amblyomma-americanum-txome-assembly/).
