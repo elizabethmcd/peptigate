@@ -21,8 +21,7 @@ OUTPUT_DIR = Path(config["output_dir"])
 
 ORFS_AMINO_ACIDS = Path(config["orfs_amino_acids"])
 ORFS_NUCLEOTIDES = Path(config["orfs_nucleotides"])
-CONTIGS_SHORTER = Path(config["contigs_shorter_than_r2t_minimum_length"])
-CONTIGS_LONGER = Path(config["contigs_longer_than_r2t_minimum_length"])
+CONTIGS = Path(config["contigs"])
 PLMUTILS_MODEL_DIR = Path(config["plmutils_model_dir"])
 
 ################################################################################
@@ -48,33 +47,6 @@ Note that we follow the conventions of the prokka tool for output file suffixes 
 ## sORF prediction
 ################################################################################
 
-
-rule combine_contigs:
-    """
-    By default we assume that files provided to this pipeline are reads2transcriptome outputs.
-    Reads2transcriptome outputs two files that contain contigs.
-    The first we refer to as contigs_shorter_than_r2t_minimum (or CONTIGS_SHORTER),
-    which are transcripts output by assemblers that did not meet the r2t runs minimum contig length.
-    The second we refer to as contigs_longer_than_r2t_minimum (or CONTIGS_LONGER) and are assembled
-    transcripts that passed the isoform clustering and decontamination steps of r2t.
-    We no longer need these pools of transcripts differentiated, so we combine them in this rule. 
-    If your input transcriptome only has one file of assembled contigs, sequences only need to be
-    supplied in contigs_longer_than_r2t_minimum_length.
-    contigs_shorter_than_r2t_minimum_length can be an empty file.
-    """
-    input:
-        contigs_shorter=CONTIGS_SHORTER,
-        contigs_longer=CONTIGS_LONGER,
-    output:
-        all_contigs=OUTPUT_DIR / "sORF" / "contigs" / "all_input_contigs.fna",
-    conda:
-        "envs/seqkit.yml"
-    shell:
-        """
-        cat {input.contigs_shorter} {input.contigs_longer} > {output.all_contigs}
-        """
-
-
 rule get_coding_contig_names:
     """
     Extract amino acid contig names and remove everything after the first period, 
@@ -95,24 +67,21 @@ rule get_coding_contig_names:
 
 rule filter_contigs_to_no_predicted_ORF:
     """
-    The peptigate pipeline takes as input transcripts (provided in two files) and predicted or
-    annotated coding genes (provided in nucleotide and amino acid formats).
-    This rule removes contigs with coding genes from the full transcript file.
-    It assumes that the contig names are the same between to the two files (everything before the
-    first period) and uses an inverted grep on the sequence names in the coding file to
-    eliminate transcripts that contain protein-coding genes.
-    It keeps all other transcripts, regardless of length, to investigate the presence of an sORF
-    later in the pipeline.
+    The peptigate pipeline takes as input transcripts and predicted or annotated coding genes
+    (provided in nucleotide and amino acid formats). This rule removes contigs with coding genes
+    from the transcriptome assembly file (contigs). It assumes that the contig names are the same in
+    the transcriptome assembly file and the annotated coding genes file (everything before the first
+    period) and uses an inverted grep on the sequence names in the coding file to eliminate
+    transcripts that contain protein-coding genes. It keeps all other transcripts, regardless of
+    length, to investigate the presence of an sORF later in the pipeline.
 
-    We expect that read2transcriptome will often be used to used to create input files for
-    peptigate, or that transdecoder will be used to predict which transcripts contain protein-coding
-    genes (the r2t pipeline also uses transdecoder to predict open reading frames (ORFs) from
-    transcripts). By default, only ORFs that are longer than 100 amino acids are kept by
-    transdecoder. The peptigate pipeline predicts peptides that are 100 amino acids or shorter.
-    This rule eliminates transcripts that contained a transdecoder-predicted ORF.
+    We expect that transdecoder will often be used to predict which transcripts contain
+    protein-coding genes (ORF prediction). By default, only ORFs that are longer than 100 amino
+    acids are kept by transdecoder. The peptigate pipeline predicts peptides that are 100 amino
+    acids or shorter. This rule eliminates transcripts that contained a transdecoder-predicted ORF.
     """
     input:
-        fna=rules.combine_contigs.output.all_contigs,
+        fna=CONTIGS,
         names=rules.get_coding_contig_names.output.names,
     output:
         fna=OUTPUT_DIR / "sORF" / "contigs" / "contigs_with_no_annotated_orf.fna",
