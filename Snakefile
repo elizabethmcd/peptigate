@@ -47,6 +47,7 @@ Note that we follow the conventions of the prokka tool for output file suffixes 
 ## sORF prediction
 ################################################################################
 
+
 rule get_coding_contig_names:
     """
     Extract amino acid contig names and remove everything after the first period, 
