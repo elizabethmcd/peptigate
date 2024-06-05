@@ -14,25 +14,22 @@
 input_dir: "path/to/inputdir/"
 output_dir: "path/to/outputdir"
 
-# All input files are produced by reads2transcriptome.
-# While this is not a strict requirement, using these output files gives us the ability to look at very short contiguous sequences.
+# Input files and directories
+# - contigs: transcriptome assembly contigs.
 # - orfs_amino_acids: predicted ORFs translated into amino acids.
-#   Output by transdecoder.
-#   Used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases.
-# - orfs_nucleotides: predicted ORFs as nucleotide sequences. Output by transdecoder.
-#   Used to compare peptide nucleotide sequences (clustering, dn/ds estimation, etc.).
-# - contigs_shorter_than_r2t_minimum_length: contigs that are shorter than X nucleotides (by default 75bp).
-#   The reads2transcriptome pipeline assembles RNA-seq reads into contigs (transcripts) using multiple assemblers and then merges those assemblies together.
-#   Before merging, very short contigs are removed (<75bp).
-#   However, reads2transcriptome outputs a FASTA file containing these transcripts, which is used as input to peptigate here.
-#   These contigs may contain sORFs and so are included as an input to the peptigate pipeline.
-# - contigs_longer_than_r2t_minimum_length: contigs longer than X nucleotides (default is 75bp).
-#   If the user did not use the reads2transcriptome file to generate their input files, this would be a transcriptome assembly FASTA file in nucleotide format containing transcripts.
-#   Note that the first step of sORF prediction combines the contigs_shorter_than_r2t_minimum_length and contigs_longer_than_r2t_minimum_length files, so there is no need to perform any pre-processing by length.
-# - plmutils_model_dir: path to the directory for the plmutils model that will predict whether sORFs are coding or non-coding.
+#   ORFs should be predicted from the same transcriptome assembly as the "contigs" input file.
+#   ORFs should have the same name (before the first period in the name) as the contigs in the
+#   "contigs" input file. TransDecoder provides files in the proper format.
+#   This file is used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases, and to
+#   remove coding transcripts from the transcriptome assembly before sORF prediction.
+# - orfs_nucleotides: predicted ORFs as nucleotide sequences. Should contain the same ORFs as
+#   "orfs_amino_acids" but in nucleotide format. TransDecoder also provides this file in the proper
+#   format. If this file contains short ORFs (< 300 nucleotides), they will not be reported as sORFs
+#   as they are already annotated in the input.
+# - plmutils_model_dir: path to the directory for the plmutils model that will predict whether sORFs
+#   are coding or non-coding.
 
+contigs: "path/to/contigs.fa"
 orfs_amino_acids: "path/to/orfs.faa"
 orfs_nucleotides: "path/to/orfs.fa"
-contigs_shorter_than_r2t_minimum_length: "path/to/short_contigs.fa"
-contigs_longer_than_r2t_minimum_length: "path/to/long_contigs.fa"
 plmutils_model_dir: "inputs/models/plmutils/"

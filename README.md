@@ -34,11 +34,11 @@ snakemake --software-deployment-method conda -j 1 --configfile demo/config.yml
 
 ## Input data
 
-The [peptigate pipeline](./Snakefile) requires two pairs of input files (for a total of four input files):
-* A transcriptome assembly, split into "long" and "short" contigs. 
-    * Long transcripts/contigs: A transcriptome assembly FASTA file in nucleotide format containing transcripts or contigs longer than X nucleotides (typically, 300-500nt).
-    * Short transcripts/contigs: contigs that are shorter than X nucleotides (typically, 300-500nt). Some transcriptome assemblers discard short contigs and do not include them in the final assembly. However, some provide them as an intermediate output file. These contigs may contain sORFs and so are included as an input to the peptigate pipeline. If you do not have a file that contains very short contigs, provide a path to an empty file. Short contigs can also be provided as part of the previous file. If that is the case, provide a path to an empty file for this input file.
-* Open reading frames predicted from the transcriptome in both amino acid and nucleotide format. The open reading frames in both files should have the same names. Tools like [Transdecoder](https://github.com/TransDecoder/TransDecoder) provide these files in the correct format.
+The [peptigate pipeline](./Snakefile) requires three input files:
+* A transcriptome assembly as a FASTA file in nucleotide format containing transcripts or contigs.
+* Open reading frames predicted from the transcriptome in both amino acid and nucleotide format.
+  The open reading frames in both files should have the same names before the first period in the FASTA header name.
+  Tools like [TransDecoder](https://github.com/TransDecoder/TransDecoder) provide these files in the correct format.
     * Open reading frames in amino acid format: A FASTA file of predicted open reading frames in amino acid format.
     * Open reading frames in nucleotide format: A FASTA file of predicted open reading frames in nucleotide format.
 
