@@ -45,14 +45,32 @@ combine_peptide_predictions <- function(nlpprecursor_path,
                                         faa_tab_path,
                                         ffn_tab_path) {
   
-  nlpprecursor <- read_tsv(nlpprecursor_path) %>%
+  nlpprecursor <- read_tsv(nlpprecursor_path, 
+                           col_types = cols(peptide_id = col_character(),
+                                            start = col_double(),
+                                            end = col_double(),
+                                            peptide_type = col_character(),
+                                            peptide_class = col_character(),
+                                            prediction_tool = col_character(),
+                                            nlpprecursor_class_score = col_double(),
+                                            nlpprecursor_cleavage_sequence = col_character(),
+                                            nlpprecursor_cleavage_score = col_double())) %>%
     select(-nlpprecursor_cleavage_sequence)
   
-  deeppeptide <- read_tsv(deeppeptide_path)
+  deeppeptide <- read_tsv(deeppeptide_path, 
+                          col_types = cols(peptide_id = col_character(),
+                                           start = col_double(),
+                                           end = col_double(),
+                                           peptide_type = col_character(),
+                                           peptide_class = col_character(),
+                                           prediction_tool = col_character()))
   
-  plmutils <- read_csv(plmutils_path) %>%
+  plmutils <- read_csv(plmutils_path,
+                       col_types = cols(sequence_id = col_character(),
+                                        predicted_probability = col_double(),
+                                        predicted_label = col_character())) %>%
     filter(predicted_label == "positive") %>%
-    select(peptide_id = sequence_id) %>%
+    select(peptide_id = sequence_id, plmutils_class_probability = predicted_probability) %>%
     mutate(peptide_type = "sORF", 
            prediction_tool = "plmutils")
   
