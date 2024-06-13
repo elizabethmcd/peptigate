@@ -141,7 +141,7 @@ Other folders record intermediate files needed to make the final prediction file
 See below for a description of each folder.
  
 * `predictions/`: combined peptide predictions and annotations.
-    * `peptide_annotations.tsv`: annotations for peptide predictions. Note a single `peptide_id` may have multiple rows, usually because DeepSig predicts both a chain and a signal peptide in a peptide sequence. 
+    * `peptide_annotations.tsv`: annotations for peptide predictions. Note a single `peptide_id` may have multiple rows. 
     * `peptide_predictions.tsv`: peptide predictions, including protein and nucleotide sequences and prediction tool.
     * `peptides.faa`: peptide predictions in amino acid FASTA format.
     * `peptides.ffn`: peptide predictions in nucleotide FASTA format.
