@@ -38,9 +38,19 @@ combine_peptide_annotations <- function(autopeptideml_dir, deepsig_path,
   autopeptideml <- map_dfr(autopeptideml_files, read_tsv) %>%
     group_by(peptide_id, sequence) %>% 
     summarize(across(everything(), ~ first(na.omit(.))))
-  
+
+  # DeepSig outputs multiple lines per peptide if the peptide contains chain and
+  # signal peptide domains. The code below collapses all information for each
+  # peptide into a single outputs column called deepsig_combined. This approach
+  # helps keep tidy data so each peptide only ends up with one row in the 
+  # annotation table.
   deepsig <- read_tsv(deepsig_path) %>%
-    select(-tool, -tmp1, -tmp2)
+    select(-tool, -tmp1, -tmp2) %>%
+    group_by(peptide_id) %>%
+    summarise(deepsig_combined = str_c(deepsig_feature, deepsig_feature_start,
+                                       deepsig_feature_end, deepsig_feature_score,
+                                       deepsig_description, sep = "; ", collapse = " | ")) %>%
+    ungroup()
   
   peptipedia <- read_tsv(peptipedia_path) %>%
     rename(peptide_id = qseqid)  %>%
@@ -57,8 +67,8 @@ combine_peptide_annotations <- function(autopeptideml_dir, deepsig_path,
   
   peptide_predictions_with_annotations <- autopeptideml %>%
     left_join(characteristics, by = "peptide_id", relationship = "one-to-one") %>%
-    left_join(peptipedia, by = "peptide_id", relationship = "one-to-many") %>%
-    left_join(deepsig, by = "peptide_id", relationship = "many-to-many")
+    left_join(deepsig, by = "peptide_id", relationship = "one-to-one") %>%
+    left_join(peptipedia, by = "peptide_id", relationship = "one-to-many") 
   
   return(peptide_predictions_with_annotations)
 }

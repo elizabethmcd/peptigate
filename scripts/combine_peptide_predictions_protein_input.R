@@ -40,11 +40,25 @@ combine_peptide_predictions <- function(nlpprecursor_path,
                                         sorf_path,
                                         faa_tab_path) {
   
-  nlpprecursor <- read_tsv(nlpprecursor_path) %>%
+  nlpprecursor <- read_tsv(nlpprecursor_path, 
+                           col_types = cols(peptide_id = col_character(),
+                                            start = col_double(),
+                                            end = col_double(),
+                                            peptide_type = col_character(),
+                                            peptide_class = col_character(),
+                                            prediction_tool = col_character(),
+                                            nlpprecursor_class_score = col_double(),
+                                            nlpprecursor_cleavage_sequence = col_character(),
+                                            nlpprecursor_cleavage_score = col_double())) %>%
     select(-nlpprecursor_cleavage_sequence)
   
-  deeppeptide <- read_tsv(deeppeptide_path)
-  
+  deeppeptide <- read_tsv(deeppeptide_path, 
+                          col_types = cols(peptide_id = col_character(),
+                                           start = col_double(),
+                                           end = col_double(),
+                                           peptide_type = col_character(),
+                                           peptide_class = col_character(),
+                                           prediction_tool = col_character()))  
   sorf <- read_tsv(sorf_path, col_names = c("peptide_id", "protein_sequence")) %>%
     select(-protein_sequence) %>%
     mutate(peptide_type = "sORF", 
