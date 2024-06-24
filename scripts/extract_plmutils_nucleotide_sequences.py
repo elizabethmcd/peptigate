@@ -54,7 +54,10 @@ def extract_nucleotide_peptide_sequences(
         )
         protein_peptide_sequence = peptide_record.seq
         if not utils.verify_translation(
-            nucleotide_peptide_sequence, protein_peptide_sequence, to_stop=False
+            nucleotide_peptide_sequence,
+            protein_peptide_sequence,
+            to_stop=False,
+            allow_wildcard_x = True 
         ):
             raise ValueError(
                 f"Warning: Translation mismatch for {transcript_id}. "
