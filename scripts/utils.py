@@ -5,14 +5,19 @@ from Bio.Seq import Seq
 def verify_translation(nucleotide_seq, amino_acid_seq, to_stop, allow_wildcard_x=False):
     """
     Verify that a nucleotide sequence correctly translates to its corresponding amino acid sequence.
-    The allow_wildcard_x argument permits any amino acid encoded by an "X" in the input sequence to
-    be replaced with the corresponding translated nucleotide sequence. We include this due to
-    Orfipy's conservative approach of not assigning an amino acid identity if the codon contains an
-    "N". Conversely, Biopython is less restrictive and will assign an amino acid sequence if the
-    codon can only translate into a single amino acid, regardless of the "N". For example, the
-    leucine codon begins with CT. Therefore, even if the codon is CTN, we know that it encodes
-    leucine. This approach requires the sequences to be the same length. Note that this function
-    only verifies that two translations match; it does not edit the amino acid sequence.
+
+    The `allow_wildcard_x` argument permits any amino acid encoded by an "X" in the input sequence
+    to be replaced with the corresponding translated nucleotide sequence. This option is needed when
+    `amino_acid_seq` was translated by a tool like Orfipy that does not translate codons that contain an
+    "N". 
+    This is because Biopython (which is used here to translate `nucleotide_seq` into an amino acid sequence)
+    is less restrictive and will translate codons containing "N"s if they can only translate into a single amino acid, 
+    regardless of the "N". 
+    For example, the leucine codons all begins with CT. Therefore, even if the codon is CTN, 
+    Biopython translates it to leucine. 
+    Notes: 
+    - This function requires the sequences to be the same length. 
+    - This function only verifies that two translations match; it does not edit the amino acid sequence.
     """
     translated_seq = str(Seq(str(nucleotide_seq)).translate(to_stop=to_stop))
     amino_acid_seq = str(amino_acid_seq)
