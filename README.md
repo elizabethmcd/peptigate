@@ -9,6 +9,8 @@ Peptigate is a workflow that predicts bioactive peptides from transcriptome asse
 Its name is an abbreviated portmanteau of "peptide" and "investigate" -> peptigate.
 The workflow predicts peptides (small open reading frames, cleavage peptides, and ribosomally translated and post-translationally modified) and then annotates them.
 
+For more information, see the pub, ["Predicting bioactive peptides from transcriptome assemblies with the peptigate workflow."](https://doi.org/10.57844/arcadia-6500-9be8).
+
 ## Installation and Usage
 
 Currently, the peptigate repository needs to be cloned to use the workflow.  
