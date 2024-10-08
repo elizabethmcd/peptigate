@@ -447,7 +447,7 @@ rule combine_peptide_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
-        sorf=rules.convert_sorf_peptide_faa_to_tsv.output.tsv,
+        sorf=rules.convert_smorf_peptide_faa_to_tsv.output.tsv,
         faa_tab=rules.convert_peptide_faa_to_tsv.output.tsv,
     output:
         tsv=OUTPUT_DIR / "predictions" / "peptide_predictions.tsv",
