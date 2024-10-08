@@ -92,13 +92,14 @@ rule convert_smorf_peptide_faa_to_tsv:
     Convert the SMORF peptide faa file to TSV format.
     """
     input:
-        # This must point to the output from the smorfinder_prediction rule
-        peptide_faa=OUTPUT_DIR / "{genome_name}" / "smorf_peptides.faa"
+        peptide_faa=OUTPUT_DIR / "{genome_name}" / "smorf_peptides.faa",
     output:
         tsv=OUTPUT_DIR / "{genome_name}" / "smorf_peptides_converted.tsv"
+    conda:
+        "envs/seqkit.yml"
     shell:
         """
-        your_conversion_script.py {input.peptide_faa} > {output.tsv}
+        seqkit fx2tab --only-id {input} -o {output}
         """
 
 
