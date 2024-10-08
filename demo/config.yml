@@ -1,6 +1,0 @@
-input_dir: "inputs/"
-output_dir: "outputs/demo"
-contigs: "demo/contigs.fa"
-orfs_amino_acids: "demo/orfs_amino_acids.faa"
-orfs_nucleotides: "demo/orfs_nucleotides.fa"
-plmutils_model_dir: "inputs/models/plmutils/"
