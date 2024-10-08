@@ -21,7 +21,9 @@ OUTPUT_DIR = Path(config["output_dir"])
 
 # Get all genome assembly files ending in "*.fa" from input directory
 genome_files = {f.stem: str(f) for f in INPUT_DIR.glob("*.fa")}
+print(genome_files)
 genome_name = list(genome_files.keys())
+print(genome_name)
 
 ################################################################################
 ## Prodigal protein prediction from MAGs
