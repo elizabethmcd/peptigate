@@ -261,7 +261,7 @@ rule combine_peptide_faa_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.peptide_faa,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide_faa,
-        smorfinder=rules.smorfinder_prediction.output.peptide_faa
+        smorf=expand(OUTPUT_DIR / "{genome_name}" / "smorf_peptides.faa", genome_name=genome_name)
     output:
         peptide_faa=OUTPUT_DIR / "predictions" / "peptides.faa",
     shell:
