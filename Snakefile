@@ -69,24 +69,24 @@ rule combine_prodigal_outputs:
 
 rule smorfinder_prediction:
     """
-    Use smorfinder to identify small ORFs (smORFs) in the input protein sequences.
+    Run smorfinder for each genome.
     """
     input:
-        fasta=lambda wildcards: genome_files[wildcards.genome_name]
+        fasta=lambda wildcards: genome_files[wildcards.genome_name]  # Use the wildcard correctly
     output:
-        gff=OUTPUT_DIR / "smORF" / "smorfinder_predictions.gff",
-        peptide_faa=OUTPUT_DIR / "smORF" / "smorf_peptides.faa",
-        ffn=OUTPUT_DIR / "smORF" / "smorf_nucleotide_sequences.ffn",
-        tsv=OUTPUT_DIR / "smORF" / "smorf_summary.tsv",
+        gff=OUTPUT_DIR / wildcards.genome_name / "smorfinder_predictions.gff",
+        peptide_faa=OUTPUT_DIR / wildcards.genome_name / "smorf_peptides.faa",
+        ffn=OUTPUT_DIR / wildcards.genome_name / "smorf_nucleotide_sequences.ffn",
+        tsv=OUTPUT_DIR / wildcards.genome_name / "smorf_summary.tsv",
     conda:
         "envs/smorfinder.yml"
     shell:
         """
-        smorf single {input.fasta} -o {wildcards.genome_name}_smorf_output
-        mv {wildcards.genome_name}_smorf_output.gff {output.gff}
-        mv {wildcards.genome_name}_smorf_output.faa {output.peptide_faa}
-        mv {wildcards.genome_name}_smorf_output.ffn {output.ffn}
-        mv {wildcards.genome_name}_smorf_output.tsv {output.tsv}
+        smorf single {input.fasta} -o smorf_output  # Fixed output name
+        mv smorf_output.gff {output.gff}
+        mv smorf_output.faa {output.peptide_faa}
+        mv smorf_output.ffn {output.ffn}
+        mv smorf_output.tsv {output.tsv}
         """
 
 
