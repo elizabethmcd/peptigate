@@ -258,7 +258,7 @@ rule combine_peptide_faa_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.peptide_faa,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide_faa,
-        smorfinder=rules.smorfinder.output.faa  # Add smorfinder output
+        smorfinder=rules.smorfinder_prediction.output.faa  # Add smorfinder output
     output:
         peptide_faa=OUTPUT_DIR / "predictions" / "peptides.faa",
     shell:
