@@ -71,12 +71,12 @@ rule smorfinder_prediction:
     """
     input:
         fasta=lambda wildcards: genome_files[wildcards.genome_name]  # Use the wildcard correctly
+    
     output:
-        output:
-    gff=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorfinder_predictions.gff",
-    peptide_faa=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_peptides.faa",
-    ffn=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_nucleotide_sequences.ffn",
-    tsv=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_summary.tsv",
+        gff=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorfinder_predictions.gff",
+        peptide_faa=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_peptides.faa",
+        ffn=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_nucleotide_sequences.ffn",
+        tsv=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_summary.tsv",
 
     conda:
         "envs/smorfinder.yml"
