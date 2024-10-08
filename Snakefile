@@ -261,7 +261,7 @@ rule combine_peptide_faa_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.peptide_faa,
         deeppeptide=rules.extract_deeppeptide_sequences.output.peptide_faa,
-        smorfinder=rules.smorfinder_prediction.output.peptide_faa  # Add smorfinder output
+        smorfinder=rules.smorfinder_prediction.output.peptide_faa
     output:
         peptide_faa=OUTPUT_DIR / "predictions" / "peptides.faa",
     shell:
@@ -450,7 +450,7 @@ rule combine_peptide_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
-        sorf=rules.convert_smorf_peptide_faa_to_tsv.output.tsv,
+        smorf=expand(OUTPUT_DIR / "{genome_name}" / "smorf_peptides_converted.tsv", genome_name=GENOME_NAMES),
         faa_tab=rules.convert_peptide_faa_to_tsv.output.tsv,
     output:
         tsv=OUTPUT_DIR / "predictions" / "peptide_predictions.tsv",
@@ -461,7 +461,7 @@ rule combine_peptide_predictions:
         Rscript scripts/combine_peptide_predictions_protein_input.R \
             --nlpprecursor_path {input.nlpprecursor} \
             --deeppeptide_path {input.deeppeptide} \
-            --sorf_path {input.sorf} \
+            --smorf_path {input.smorf} \
             --faa_tab_path {input.faa_tab} \
             --output_predictions_path {output.tsv}
         """
