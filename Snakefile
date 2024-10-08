@@ -21,6 +21,7 @@ OUTPUT_DIR = Path(config["output_dir"])
 
 # Get all genome assembly files ending in "*.fa" from input directory
 genome_files = {f.stem: str(f) for f in INPUT_DIR.glob("*.fa")}
+genome_names = list(genome_files.keys())
 
 ################################################################################
 ## Prodigal protein prediction from MAGs
@@ -80,10 +81,10 @@ rule smorfinder_prediction:
     shell:
         """
         smorf single {input.fasta} -o {wildcards.genome_name}_smorf_output
-        ln -s {wildcards.smorf}/{wildcards.sorf}.gff {output.gff}
-        ln -s {wildcards.smorf}/{wildcards.sorf}.faa {output.peptide_faa}
-        ln -s {wildcards.smorf}/{wildcards.sorf}.ffn {output.ffn}
-        ln -s {wildcards.smorf}/{wildcards.sorf}.tsv {output.tsv}
+        mv {wildcards.genome_name}_smorf_output.gff {output.gff}
+        mv {wildcards.genome_name}_smorf_output.faa {output.peptide_faa}
+        mv {wildcards.genome_name}_smorf_output.ffn {output.ffn}
+        mv {wildcards.genome_name}_smorf_output.tsv {output.tsv}
         """
 
 
