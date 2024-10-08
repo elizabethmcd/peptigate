@@ -450,7 +450,7 @@ rule combine_peptide_predictions:
     input:
         nlpprecursor=rules.nlpprecursor.output.tsv,
         deeppeptide=rules.extract_deeppeptide_sequences.output.tsv,
-        smorf=expand(OUTPUT_DIR / "{genome_name}" / "smorf_peptides_converted.tsv", genome_name=GENOME_NAMES),
+        smorf=expand(OUTPUT_DIR / "{genome_name}" / "smorf_peptides_converted.tsv", genome_name=genome_name),
         faa_tab=rules.convert_peptide_faa_to_tsv.output.tsv,
     output:
         tsv=OUTPUT_DIR / "predictions" / "peptide_predictions.tsv",
