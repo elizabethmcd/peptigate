@@ -52,7 +52,7 @@ rule combine_prodigal_outputs:
     Combine all Prodigal faa outputs into a single file for downstream use.
     """
     input:
-        expand(OUTPUT_DIR / "prodigal" / "{genome_name}.faa", genome_name=list(genome_files.keys()))
+        expand(OUTPUT_DIR / "prodigal" / "{genome_name}.faa", genome_name=genome_name)
     output:
         ORFS_AMINO_ACIDS
     shell:
