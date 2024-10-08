@@ -21,9 +21,7 @@ OUTPUT_DIR = Path(config["output_dir"])
 
 # Get all genome assembly files ending in "*.fa" from input directory
 genome_files = {f.stem: str(f) for f in INPUT_DIR.glob("*.fa")}
-print(genome_files)
 genome_name = list(genome_files.keys())
-print(genome_name)
 
 ################################################################################
 ## Prodigal protein prediction from MAGs
@@ -74,10 +72,12 @@ rule smorfinder_prediction:
     input:
         fasta=lambda wildcards: genome_files[wildcards.genome_name]  # Use the wildcard correctly
     output:
-        gff=OUTPUT_DIR / wildcards.genome_name / "smorfinder_predictions.gff",
-        peptide_faa=OUTPUT_DIR / wildcards.genome_name / "smorf_peptides.faa",
-        ffn=OUTPUT_DIR / wildcards.genome_name / "smorf_nucleotide_sequences.ffn",
-        tsv=OUTPUT_DIR / wildcards.genome_name / "smorf_summary.tsv",
+        output:
+    gff=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorfinder_predictions.gff",
+    peptide_faa=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_peptides.faa",
+    ffn=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_nucleotide_sequences.ffn",
+    tsv=lambda wildcards: OUTPUT_DIR / wildcards.genome_name / "smorf_summary.tsv",
+
     conda:
         "envs/smorfinder.yml"
     shell:
