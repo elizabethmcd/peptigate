@@ -1,35 +1,6 @@
-################################################################################
-## Input file descriptions
-################################################################################
+# config.yml
 
-# Config parameters in this file are used as defaults by the pipeline (Snakefile).
-# To override the defaults, create a copy of this file and pass your new file to snakemake using the --configfile flag.
-# Any parameters in the new config file will overwrite the defaults listed here.
-
-###########
-# File IO #
-###########
-
-# Specify the input and output directories
-input_dir: "path/to/inputdir/"
-output_dir: "path/to/outputdir"
-
-# Input files and directories
-# - contigs: transcriptome assembly contigs.
-# - orfs_amino_acids: predicted ORFs translated into amino acids.
-#   ORFs should be predicted from the same transcriptome assembly as the "contigs" input file.
-#   ORFs should have the same name (before the first period in the name) as the contigs in the
-#   "contigs" input file. TransDecoder provides files in the proper format.
-#   This file is used for cleavage peptide prediction and annotation of nonribosomal peptide synthetases, and to
-#   remove coding transcripts from the transcriptome assembly before sORF prediction.
-# - orfs_nucleotides: predicted ORFs as nucleotide sequences. Should contain the same ORFs as
-#   "orfs_amino_acids" but in nucleotide format. TransDecoder also provides this file in the proper
-#   format. If this file contains short ORFs (< 300 nucleotides), they will not be reported as sORFs
-#   as they are already annotated in the input.
-# - plmutils_model_dir: path to the directory for the plmutils model that will predict whether sORFs
-#   are coding or non-coding.
-
-contigs: "path/to/contigs.fa"
-orfs_amino_acids: "path/to/orfs.faa"
-orfs_nucleotides: "path/to/orfs.fa"
-plmutils_model_dir: "inputs/models/plmutils/"
+# Input directory containing genome assemblies in FASTA format
+input_dir: "/path/to/input_dir"
+# Output directory where results are stored
+output_dir: "path/to/output_dir"

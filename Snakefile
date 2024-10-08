@@ -19,10 +19,8 @@ configfile: "./config.yml"
 INPUT_DIR = Path(config["input_dir"])
 OUTPUT_DIR = Path(config["output_dir"])
 
-# Load the samplesheet with genome paths
-SAMPLESHEET = Path(config["samplesheet"])  # Add this to your config.yml
-samples = pd.read_csv(SAMPLESHEET, sep="\t")  # Adjust separator if necessary
-genome_files = dict(zip(samples['genome_name'], samples['fasta_path']))
+# Get all genome assembly files ending in "*.fa" from input directory
+genome_files = {f.stem: str(f) for f in INPUT_DIR.glob("*.fa")}
 
 ################################################################################
 ## Prodigal protein prediction from MAGs
@@ -53,7 +51,7 @@ rule combine_prodigal_outputs:
     Combine all Prodigal faa outputs into a single file for downstream use.
     """
     input:
-        expand(OUTPUT_DIR / "prodigal" / "{genome_name}.faa", genome_name=samples['genome_name'].tolist())
+        expand(OUTPUT_DIR / "prodigal" / "{genome_name}.faa", genome_name=list(genome_files.keys()))
     output:
         ORFS_AMINO_ACIDS
     shell:
@@ -71,7 +69,7 @@ rule smorfinder_prediction:
     Use smorfinder to identify small ORFs (smORFs) in the input protein sequences.
     """
     input:
-        fasta=fasta=lambda wildcards: genome_files[wildcards.genome_name]
+        fasta=lambda wildcards: genome_files[wildcards.genome_name]
     output:
         gff=OUTPUT_DIR / "smORF" / "smorfinder_predictions.gff",
         peptide_faa=OUTPUT_DIR / "smORF" / "smorf_peptides.faa",
