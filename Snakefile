@@ -71,7 +71,7 @@ rule smorfinder_prediction:
     Use smorfinder to identify small ORFs (smORFs) in the input protein sequences.
     """
     input:
-        fasta=ORFS_AMINO_ACIDS,
+        fasta=fasta=lambda wildcards: genome_files[wildcards.genome_name]
     output:
         gff=OUTPUT_DIR / "smORF" / "smorfinder_predictions.gff",
         peptide_faa=OUTPUT_DIR / "smORF" / "smorf_peptides.faa",
@@ -81,7 +81,7 @@ rule smorfinder_prediction:
         "envs/smorfinder.yml"
     shell:
         """
-        smorf single {input.fasta} -o {wildcards.smorf}
+        smorf single {input.fasta} -o {wildcards.genome_name}_smorf_output
         ln -s {wildcards.smorf}/{wildcards.sorf}.gff {output.gff}
         ln -s {wildcards.smorf}/{wildcards.sorf}.faa {output.peptide_faa}
         ln -s {wildcards.smorf}/{wildcards.sorf}.ffn {output.ffn}
